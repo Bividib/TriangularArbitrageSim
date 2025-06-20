@@ -83,16 +83,19 @@ jobs:
       run: |
         lcov --directory ${{ env.BUILD_DIR }} --zerocounters
         ctest --test-dir ${{ env.BUILD_DIR }}
-        lcov --capture --directory ${{ env.BUILD_DIR }} --output-file coverage.info --ignore-errors mismatch
-        lcov --extract coverage_full.info "*/src/*" --output-file coverage_filtered.info
+        
+        lcov --capture --directory ${{ env.BUILD_DIR }} --output-file coverage.info --ignore-errors mismatch 
+        lcov --extract coverage.info "*/src/*" --output-file coverage_filtered.info # <--- FIX IS HERE
         
         genhtml coverage_filtered.info --output-directory ${{ env.BUILD_DIR }}/html_coverage
 
     - name: Display Coverage Summary
       run: |
-        gcovr --lcov -o coverage_gcovr.info ${{ env.BUILD_DIR }}
         echo "## Code Coverage Summary" >> $GITHUB_STEP_SUMMARY
-        gcovr --print-summary --filter "src/" >> $GITHUB_STEP_SUMMARY
+        # Generate the summary directly, filtering for src/ and excluding unreachable lines.
+        # This will operate on the raw .gcda files in BUILD_DIR and apply the filter.
+        # Remove the --lcov output to a file if nothing else consumes it.
+        gcovr --print-summary --filter "src/" ${{ env.BUILD_DIR }} >> $GITHUB_STEP_SUMMARY
       if: always()
 
     - name: Upload HTML Coverage Report as Artifact (Optional)
