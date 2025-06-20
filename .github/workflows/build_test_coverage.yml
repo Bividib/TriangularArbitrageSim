@@ -2,14 +2,15 @@ name: C++ CI (Build, Test, Coverage)
 
 on:
   push:
-    branches: [ main, master ] # Run on push to main or master branch
+    branches: [ main, master, dev ] # Run on push to main or master branch
   pull_request:
-    branches: [ main, master ] # Run on pull requests to main or master
+    branches: [ main, master, dev ] # Run on pull requests to main or master
 
 env:
   BUILD_TYPE: Release # Or Debug, RelWithDebInfo
-  # Define a specific output path for your build to make it easy to find
   BUILD_DIR: ${{ github.workspace }}/build_ci
+  # Path for JUnit XML test results
+  TEST_RESULTS_DIR: ${{ github.workspace }}/test-results
 
 jobs:
   build-test-coverage:
@@ -17,62 +18,87 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4 # Action to checkout your repository
+      uses: actions/checkout@v4
 
     - name: Set up C++ Build Environment
-      # Install essential build tools, including gcov/lcov for coverage
       run: |
         sudo apt-get update
         sudo apt-get install -y build-essential cmake lcov gcovr
 
     - name: Configure CMake
-      # Create build directory and configure CMake
-      # -DCMAKE_BUILD_TYPE: Set the build type
-      # -DCMAKE_EXPORT_COMPILE_COMMANDS: Needed by some analysis tools, good practice
-      # -S . -B ${{ env.BUILD_DIR }}: Source directory is current, binary directory is BUILD_DIR
       run: |
         mkdir -p ${{ env.BUILD_DIR }}
         cmake -S . -B ${{ env.BUILD_DIR }} \
               -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
-              -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+              -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+              -DCOVERAGE=ON # Add a flag to enable coverage build flags in CMakeLists.txt
 
     - name: Build Project (including tests)
-      # Build all targets defined in CMakeLists.txt
-      # --parallel $(nproc): Use all available CPU cores for faster build
       run: cmake --build ${{ env.BUILD_DIR }} --config ${{ env.BUILD_TYPE }} --parallel $(nproc)
 
-    - name: Run Unit Tests
-      # Execute tests using CTest
-      # --output-on-failure: Show output of failing tests
-      run: ctest --test-dir ${{ env.BUILD_DIR }} --output-on-failure
+    - name: Create Test Results Directory
+      run: mkdir -p ${{ env.TEST_RESULTS_DIR }}
+
+    - name: Run Unit Tests and Generate JUnit XML
+      # CTest can generate JUnit XML directly. This is crucial for reporting actions.
+      # The '--output-on-failure' is still useful for immediate log review.
+      # '--output-junit <file>' specifies the output XML file.
+      run: |
+        ctest --test-dir ${{ env.BUILD_DIR }} \
+              --output-on-failure \
+              --output-junit ${{ env.TEST_RESULTS_DIR }}/test-results.xml
+      continue-on-error: true # Allow workflow to continue even if tests fail, so reports can be generated
+
+    - name: Publish Test Results (Green/Amber Dot)
+      # This action processes JUnit XML and provides visual feedback.
+      # It adds a check status (the green/amber/red dot) to your workflow run.
+      uses: EnricoMi/publish-unit-test-results@v2
+      if: always() # Always run this step, even if previous steps (like tests) failed
+      with:
+        files: ${{ env.TEST_RESULTS_DIR }}/*.xml
+        # The title that appears in the checks tab
+        check_name: Unit Test Results
+        # Allows you to see the test names and results directly in the summary
+        job_summary: true
 
     - name: Generate Code Coverage Report
-      # Run lcov to collect coverage data and generate a report
-      # Use gcovr if you prefer a more consolidated report
       # Adjust paths based on where your source and build directories are
       run: |
         # Clean previous coverage data (important for sequential runs)
         lcov --directory ${{ env.BUILD_DIR }} --zerocounters
 
         # Run tests again to generate fresh .gcda files
+        # It's important to run tests *after* zerocounters and *before* capture
         ctest --test-dir ${{ env.BUILD_DIR }}
 
         # Capture coverage data
         lcov --capture --directory ${{ env.BUILD_DIR }} --output-file coverage.info
 
         # Filter out system headers and third-party libraries (customize as needed)
-        # Assuming your source files are under `src/`
+        # Assuming your main application source is in `src/` and tests are in `test/`
         lcov --remove coverage.info "/usr/*" --output-file coverage_filtered.info
         lcov --remove coverage_filtered.info "*/_deps/*" --output-file coverage_filtered.info # For FetchContent
-        lcov --remove coverage_filtered.info "*tests*" --output-file coverage_filtered.info # Exclude test files themselves
+        lcov --remove coverage_filtered.info "*/test/*" --output-file coverage_filtered.info # Exclude test files themselves
         
-        # You can optionally generate an HTML report to see it as an artifact
+        # Generate an HTML report
         genhtml coverage_filtered.info --output-directory ${{ env.BUILD_DIR }}/html_coverage
 
+    - name: Display Coverage Summary
+      # Use gcovr to get a textual summary directly in the workflow log and job summary
+      # Make sure gcovr is installed (added in "Set up C++ Build Environment")
+      run: |
+        gcovr --lcov -o coverage_gcovr.info ${{ env.BUILD_DIR }} # Generate gcovr specific info
+        echo "## Code Coverage Summary" >> $GITHUB_STEP_SUMMARY
+        gcovr --summary --print-summary --exclude-unreachable-lines --filter "src/" >> $GITHUB_STEP_SUMMARY
+        # You can also generate a more detailed text report if desired:
+        # gcovr --relative-path ${{ github.workspace }} --filter "src/" --exclude-directories "test/" --html-details -o coverage_details.html
+        # echo "See detailed coverage: ${{ env.BUILD_DIR }}/coverage_details.html" >> $GITHUB_STEP_SUMMARY
+      # This step needs to run after coverage generation
+      if: always()
+
     - name: Upload HTML Coverage Report as Artifact (Optional)
-      # This allows you to download the HTML report from the GitHub Actions run
       uses: actions/upload-artifact@v4
       with:
         name: html-coverage-report
         path: ${{ env.BUILD_DIR }}/html_coverage
-        retention-days: 5 # How long to keep the artifact
+        retention-days: 5
