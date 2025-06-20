@@ -26,8 +26,6 @@ set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
 # Add an executable target.
-# The first argument is the name of your executable (e.g., MyExecutable).
-# The subsequent arguments are the source files that make up this executable.
 add_executable(Main src/main.cpp src/websocket/websocket.cpp)
 
 cmake_policy(SET CMP0167 NEW)
@@ -46,7 +44,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 enable_testing() # Crucial: enables CTest infrastructure
 
 # Define a separate executable for tests
-add_executable(UnitTests test/test.cpp) 
+add_executable(UnitTests test/test.cpp src/websocket/websocket.cpp)
 
 # Link your test executable to Google Test libraries
 target_link_libraries(UnitTests PRIVATE
