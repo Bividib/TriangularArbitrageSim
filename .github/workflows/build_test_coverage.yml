@@ -1,105 +1,75 @@
-name: C++ CI (Build, Test, Coverage)
+# This starter workflow is for a CMake project running on multiple platforms. There is a different starter workflow if you just want a single platform.
+# See: https://github.com/actions/starter-workflows/blob/main/ci/cmake-single-platform.yml
+name: CMake on multiple platforms
 
 on:
   push:
-    branches: [ main, master, dev ] # Run on push to main or master branch
+    branches: [ "main","dev" ]
   pull_request:
-    branches: [ main, master, dev ] # Run on pull requests to main or master
-
-env:
-  BUILD_TYPE: Release # Or Debug, RelWithDebInfo
-  BUILD_DIR: ${{ github.workspace }}/build_ci
-  # Path for JUnit XML test results
-  TEST_RESULTS_DIR: ${{ github.workspace }}/test-results
+    branches: [ "main", "dev" ]
 
 jobs:
-  build-test-coverage:
-    runs-on: ubuntu-latest # Use a Linux runner for GCC/Clang and lcov
+  build:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      # Set fail-fast to false to ensure that feedback is delivered for all matrix combinations. Consider changing this to true when your workflow is stable.
+      fail-fast: false
+
+      # Set up a matrix to run the following 3 configurations:
+      # 1. <Windows, Release, latest MSVC compiler toolchain on the default runner image, default generator>
+      # 2. <Linux, Release, latest GCC compiler toolchain on the default runner image, default generator>
+      # 3. <Linux, Release, latest Clang compiler toolchain on the default runner image, default generator>
+      #
+      # To add more build types (Release, Debug, RelWithDebInfo, etc.) customize the build_type list.
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        build_type: [Release]
+        c_compiler: [gcc, clang, cl]
+        include:
+          - os: windows-latest
+            c_compiler: cl
+            cpp_compiler: cl
+          - os: ubuntu-latest
+            c_compiler: gcc
+            cpp_compiler: g++
+          - os: ubuntu-latest
+            c_compiler: clang
+            cpp_compiler: clang++
+        exclude:
+          - os: windows-latest
+            c_compiler: gcc
+          - os: windows-latest
+            c_compiler: clang
+          - os: ubuntu-latest
+            c_compiler: cl
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-    - name: Set up C++ Build Environment
+    - name: Set reusable strings
+      # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
+      id: strings
+      shell: bash
       run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential cmake lcov gcovr
+        echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
 
     - name: Configure CMake
-      run: |
-        echo "GITHUB_WORKSPACE: ${{ github.workspace }}"
-        mkdir -p ${{ env.BUILD_DIR }}
-        cd ${{ env.BUILD_DIR }}
-        ls -la ..
-        cmake .. \
-              -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
-              -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-              -DCOVERAGE=ON
+      # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
+      # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
+      run: >
+        cmake -B ${{ steps.strings.outputs.build-output-dir }}
+        -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
+        -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
+        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+        -S ${{ github.workspace }}
 
-    - name: Build Project (including tests)
-      run: cmake --build ${{ env.BUILD_DIR }} --config ${{ env.BUILD_TYPE }} --parallel $(nproc)
+    - name: Build
+      # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
+      run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
 
-    - name: Create Test Results Directory
-      run: mkdir -p ${{ env.TEST_RESULTS_DIR }}
-
-    - name: Run Unit Tests and Generate JUnit XML
-      # CTest can generate JUnit XML directly. This is crucial for reporting actions.
-      # The '--output-on-failure' is still useful for immediate log review.
-      # '--output-junit <file>' specifies the output XML file.
-      run: |
-        ctest --test-dir ${{ env.BUILD_DIR }} \
-              --output-on-failure \
-              --output-junit ${{ env.TEST_RESULTS_DIR }}/test-results.xml
-      continue-on-error: true # Allow workflow to continue even if tests fail, so reports can be generated
-
-    - name: Publish Test Results (Green/Amber Dot)
-      uses: dorny/test-reporter@v1 
-      if: always()
-      with:
-        name: Unit Test Results 
-        path: ${{ env.TEST_RESULTS_DIR }}/*.xml
-        reporter: junit 
-        fail-on-error: true 
-        summary: true 
-
-    - name: Generate Code Coverage Report
-      # Adjust paths based on where your source and build directories are
-      run: |
-        # Clean previous coverage data (important for sequential runs)
-        lcov --directory ${{ env.BUILD_DIR }} --zerocounters
-
-        # Run tests again to generate fresh .gcda files
-        # It's important to run tests *after* zerocounters and *before* capture
-        ctest --test-dir ${{ env.BUILD_DIR }}
-
-        # Capture coverage data
-        lcov --capture --directory ${{ env.BUILD_DIR }} --output-file coverage.info
-
-        # Filter out system headers and third-party libraries (customize as needed)
-        # Assuming your main application source is in `src/` and tests are in `test/`
-        lcov --remove coverage.info "/usr/*" --output-file coverage_filtered.info
-        lcov --remove coverage_filtered.info "*/_deps/*" --output-file coverage_filtered.info # For FetchContent
-        lcov --remove coverage_filtered.info "*/test/*" --output-file coverage_filtered.info # Exclude test files themselves
-        
-        # Generate an HTML report
-        genhtml coverage_filtered.info --output-directory ${{ env.BUILD_DIR }}/html_coverage
-
-    - name: Display Coverage Summary
-      # Use gcovr to get a textual summary directly in the workflow log and job summary
-      # Make sure gcovr is installed (added in "Set up C++ Build Environment")
-      run: |
-        gcovr --lcov -o coverage_gcovr.info ${{ env.BUILD_DIR }} # Generate gcovr specific info
-        echo "## Code Coverage Summary" >> $GITHUB_STEP_SUMMARY
-        gcovr --summary --print-summary --exclude-unreachable-lines --filter "src/" >> $GITHUB_STEP_SUMMARY
-        # You can also generate a more detailed text report if desired:
-        # gcovr --relative-path ${{ github.workspace }} --filter "src/" --exclude-directories "test/" --html-details -o coverage_details.html
-        # echo "See detailed coverage: ${{ env.BUILD_DIR }}/coverage_details.html" >> $GITHUB_STEP_SUMMARY
-      # This step needs to run after coverage generation
-      if: always()
-
-    - name: Upload HTML Coverage Report as Artifact (Optional)
-      uses: actions/upload-artifact@v4
-      with:
-        name: html-coverage-report
-        path: ${{ env.BUILD_DIR }}/html_coverage
-        retention-days: 5
+    - name: Test
+      working-directory: ${{ steps.strings.outputs.build-output-dir }}
+      # Execute tests defined by the CMake configuration. Note that --build-config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
+      # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
+      run: ctest --build-config ${{ matrix.build_type }}
