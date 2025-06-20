@@ -16,6 +16,10 @@ env:
 jobs:
   build-test-coverage:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read 
+      checks: write 
+      id-token: write
 
     steps:
     - name: Checkout code
@@ -78,6 +82,7 @@ jobs:
         path: ${{ env.TEST_RESULTS_DIR }}/*.xml
         reporter: java-junit 
         fail-on-error: true 
+
 
     - name: Generate Code Coverage Report
       run: |
