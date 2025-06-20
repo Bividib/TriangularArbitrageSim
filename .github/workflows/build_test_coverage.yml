@@ -34,12 +34,6 @@ jobs:
     # This action sets up VCPKG_ROOT and adds the toolchain file to CMake automatically
     - name: Set up vcpkg
       uses: lukka/run-vcpkg@v11 # Using a specific version for stability
-      with:
-        vcpkgArguments: 'boost-beast' # Specify packages you expect to use, helps pre-cache
-        # Set the triplet to ensure it matches your env: VCPKG_TARGET_TRIPLET
-        triplet: ${{ env.VCPKG_TARGET_TRIPLET }} 
-        # This will install vcpkg and its dependencies into its cache, then reuse it.
-        # It also implicitly sets up CMAKE_TOOLCHAIN_FILE for subsequent CMake calls.
 
     - name: Configure CMake
       working-directory: ${{ github.workspace }}
@@ -88,7 +82,7 @@ jobs:
       run: |
         lcov --directory ${{ env.BUILD_DIR }} --zerocounters
         ctest --test-dir ${{ env.BUILD_DIR }}
-        lcov --capture --directory ${{ env.BUILD_DIR }} --output-file coverage.info
+        lcov --capture --directory ${{ env.BUILD_DIR }} --output-file coverage.info --ignore-errors mismatch
         lcov --remove coverage.info "/usr/*" --output-file coverage_filtered.info
         lcov --remove coverage_filtered.info "*/_deps/*" --output-file coverage_filtered.info
         lcov --remove coverage.info "*/test/*" --output-file coverage_filtered.info
