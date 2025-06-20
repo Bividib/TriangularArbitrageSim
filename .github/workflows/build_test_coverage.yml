@@ -30,6 +30,9 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y build-essential cmake lcov gcovr
 
+        echo "Checking gcovr version installed by apt-get:"
+        gcovr --version || echo "gcovr not found or --version failed"
+
     # THIS IS THE CRUCIAL CHANGE FOR VCPKG MANIFEST MODE
     # This action sets up VCPKG_ROOT and adds the toolchain file to CMake automatically
     - name: Set up vcpkg
