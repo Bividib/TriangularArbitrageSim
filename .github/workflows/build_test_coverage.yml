@@ -50,16 +50,14 @@ jobs:
       continue-on-error: true # Allow workflow to continue even if tests fail, so reports can be generated
 
     - name: Publish Test Results (Green/Amber Dot)
-      # This action processes JUnit XML and provides visual feedback.
-      # It adds a check status (the green/amber/red dot) to your workflow run.
-      uses: EnricoMi/publish-unit-test-results@v2
-      if: always() # Always run this step, even if previous steps (like tests) failed
+      uses: dorny/test-reporter@v1 
+      if: always()
       with:
-        files: ${{ env.TEST_RESULTS_DIR }}/*.xml
-        # The title that appears in the checks tab
-        check_name: Unit Test Results
-        # Allows you to see the test names and results directly in the summary
-        job_summary: true
+        name: Unit Test Results 
+        path: ${{ env.TEST_RESULTS_DIR }}/*.xml
+        reporter: junit 
+        fail-on-error: true 
+        summary: true 
 
     - name: Generate Code Coverage Report
       # Adjust paths based on where your source and build directories are
