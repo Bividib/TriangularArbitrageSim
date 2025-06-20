@@ -76,4 +76,6 @@ CMakeUserPresets.json
 
 build/
 
+vcpkg_installed/
+
 # End of https://www.toptal.com/developers/gitignore/api/c++,cmake,visualstudiocode

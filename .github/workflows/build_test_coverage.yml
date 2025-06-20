@@ -1,0 +1,78 @@
+name: C++ CI (Build, Test, Coverage)
+
+on:
+  push:
+    branches: [ main, master ] # Run on push to main or master branch
+  pull_request:
+    branches: [ main, master ] # Run on pull requests to main or master
+
+env:
+  BUILD_TYPE: Release # Or Debug, RelWithDebInfo
+  # Define a specific output path for your build to make it easy to find
+  BUILD_DIR: ${{ github.workspace }}/build_ci
+
+jobs:
+  build-test-coverage:
+    runs-on: ubuntu-latest # Use a Linux runner for GCC/Clang and lcov
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4 # Action to checkout your repository
+
+    - name: Set up C++ Build Environment
+      # Install essential build tools, including gcov/lcov for coverage
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential cmake lcov gcovr
+
+    - name: Configure CMake
+      # Create build directory and configure CMake
+      # -DCMAKE_BUILD_TYPE: Set the build type
+      # -DCMAKE_EXPORT_COMPILE_COMMANDS: Needed by some analysis tools, good practice
+      # -S . -B ${{ env.BUILD_DIR }}: Source directory is current, binary directory is BUILD_DIR
+      run: |
+        mkdir -p ${{ env.BUILD_DIR }}
+        cmake -S . -B ${{ env.BUILD_DIR }} \
+              -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+              -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+    - name: Build Project (including tests)
+      # Build all targets defined in CMakeLists.txt
+      # --parallel $(nproc): Use all available CPU cores for faster build
+      run: cmake --build ${{ env.BUILD_DIR }} --config ${{ env.BUILD_TYPE }} --parallel $(nproc)
+
+    - name: Run Unit Tests
+      # Execute tests using CTest
+      # --output-on-failure: Show output of failing tests
+      run: ctest --test-dir ${{ env.BUILD_DIR }} --output-on-failure
+
+    - name: Generate Code Coverage Report
+      # Run lcov to collect coverage data and generate a report
+      # Use gcovr if you prefer a more consolidated report
+      # Adjust paths based on where your source and build directories are
+      run: |
+        # Clean previous coverage data (important for sequential runs)
+        lcov --directory ${{ env.BUILD_DIR }} --zerocounters
+
+        # Run tests again to generate fresh .gcda files
+        ctest --test-dir ${{ env.BUILD_DIR }}
+
+        # Capture coverage data
+        lcov --capture --directory ${{ env.BUILD_DIR }} --output-file coverage.info
+
+        # Filter out system headers and third-party libraries (customize as needed)
+        # Assuming your source files are under `src/`
+        lcov --remove coverage.info "/usr/*" --output-file coverage_filtered.info
+        lcov --remove coverage_filtered.info "*/_deps/*" --output-file coverage_filtered.info # For FetchContent
+        lcov --remove coverage_filtered.info "*tests*" --output-file coverage_filtered.info # Exclude test files themselves
+        
+        # You can optionally generate an HTML report to see it as an artifact
+        genhtml coverage_filtered.info --output-directory ${{ env.BUILD_DIR }}/html_coverage
+
+    - name: Upload HTML Coverage Report as Artifact (Optional)
+      # This allows you to download the HTML report from the GitHub Actions run
+      uses: actions/upload-artifact@v4
+      with:
+        name: html-coverage-report
+        path: ${{ env.BUILD_DIR }}/html_coverage
+        retention-days: 5 # How long to keep the artifact
