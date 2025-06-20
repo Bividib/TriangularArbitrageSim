@@ -27,12 +27,11 @@ jobs:
 
     - name: Configure CMake
       run: |
-        ls -la # Keep this for debugging confirmation
-        echo "Current working directory: $(pwd)" # Confirm current directory
-        echo "GITHUB_WORKSPACE: ${{ github.workspace }}" # Confirm GITHUB_WORKSPACE
-        echo "Configuring CMake with source: ${{ github.workspace }}/TriangularArbitrageSim"
+        echo "GITHUB_WORKSPACE: ${{ github.workspace }}"
         mkdir -p ${{ env.BUILD_DIR }}
-        cmake -S ${{ github.workspace }} -B ${{ env.BUILD_DIR }} \
+        cd ${{ env.BUILD_DIR }}
+        ls -la ..
+        cmake .. \
               -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
               -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
               -DCOVERAGE=ON
