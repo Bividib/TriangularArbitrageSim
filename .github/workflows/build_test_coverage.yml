@@ -76,9 +76,8 @@ jobs:
       with:
         name: Unit Test Results 
         path: ${{ env.TEST_RESULTS_DIR }}/*.xml
-        reporter: junit 
+        reporter: java-junit 
         fail-on-error: true 
-        summary: true 
 
     - name: Generate Code Coverage Report
       run: |
