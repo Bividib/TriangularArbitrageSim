@@ -30,8 +30,6 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y build-essential cmake lcov gcovr
 
-        echo "Checking gcovr version installed by apt-get:"
-        gcovr --version || echo "gcovr not found or --version failed"
 
     # THIS IS THE CRUCIAL CHANGE FOR VCPKG MANIFEST MODE
     # This action sets up VCPKG_ROOT and adds the toolchain file to CMake automatically
@@ -96,7 +94,7 @@ jobs:
       run: |
         gcovr --lcov -o coverage_gcovr.info ${{ env.BUILD_DIR }}
         echo "## Code Coverage Summary" >> $GITHUB_STEP_SUMMARY
-        gcovr --summary --print-summary --exclude-unreachable-lines --filter "src/" >> $GITHUB_STEP_SUMMARY
+        gcovr --print-summary --filter "src/" >> $GITHUB_STEP_SUMMARY
       if: always()
 
     - name: Upload HTML Coverage Report as Artifact (Optional)
