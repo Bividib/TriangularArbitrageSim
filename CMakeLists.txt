@@ -28,7 +28,7 @@ FetchContent_MakeAvailable(googletest)
 # Add an executable target.
 # The first argument is the name of your executable (e.g., MyExecutable).
 # The subsequent arguments are the source files that make up this executable.
-add_executable(Main src/main.cpp)
+add_executable(Main src/main.cpp src/websocket/websocket.cpp)
 
 cmake_policy(SET CMP0167 NEW)
 

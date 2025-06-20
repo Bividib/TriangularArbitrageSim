@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
+#include <websocket/websocket.h>
 
-TEST(ExampleTest, BasicAssertion) {
-    // Assert that 1 + 1 equals 2. This is a very basic test.
-    ASSERT_EQ(1 + 1, 2);
+TEST(WebApplicationTest, AddFunctionCorrectlyAddsIntegers) {
+    ASSERT_EQ(add(5, 3), 8) << "add(5, 3) should be 8";
 }
