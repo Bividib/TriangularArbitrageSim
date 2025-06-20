@@ -67,8 +67,7 @@ jobs:
         ctest --test-dir ${{ env.BUILD_DIR }} \
               --output-on-failure \
               --output-junit ${{ env.TEST_RESULTS_DIR }}/test-results.xml
-              --output-junit-name "TriangularArbitrageSim Tests"
-              
+
       continue-on-error: true
 
     - name: Publish Test Results (Green/Amber Dot)
