@@ -84,9 +84,7 @@ jobs:
         lcov --directory ${{ env.BUILD_DIR }} --zerocounters
         ctest --test-dir ${{ env.BUILD_DIR }}
         lcov --capture --directory ${{ env.BUILD_DIR }} --output-file coverage.info --ignore-errors mismatch
-        lcov --remove coverage.info "/usr/*" --output-file coverage_filtered.info
-        lcov --remove coverage_filtered.info "*/_deps/*" --output-file coverage_filtered.info
-        lcov --remove coverage.info "*/test/*" --output-file coverage_filtered.info
+        lcov --extract coverage_full.info "*/src/*" --output-file coverage_filtered.info
         
         genhtml coverage_filtered.info --output-directory ${{ env.BUILD_DIR }}/html_coverage
 
