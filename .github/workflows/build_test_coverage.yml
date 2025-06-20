@@ -27,13 +27,15 @@ jobs:
 
     - name: Configure CMake
       run: |
-        ls -la # List files to ensure we're in the right directory
-        echo "Configuring CMake in directory: ${{ env.BUILD_DIR }}"
+        ls -la # Keep this for debugging confirmation
+        echo "Current working directory: $(pwd)" # Confirm current directory
+        echo "GITHUB_WORKSPACE: ${{ github.workspace }}" # Confirm GITHUB_WORKSPACE
+        echo "Configuring CMake with source: ${{ github.workspace }}/TriangularArbitrageSim"
         mkdir -p ${{ env.BUILD_DIR }}
-        cmake -S . -B ${{ env.BUILD_DIR }} \
+        cmake -S ${{ github.workspace }}/TriangularArbitrageSim -B ${{ env.BUILD_DIR }} \ # <--- CHANGE THIS LINE
               -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
               -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-              -DCOVERAGE=ON # Add a flag to enable coverage build flags in CMakeLists.txt
+              -DCOVERAGE=ON
 
     - name: Build Project (including tests)
       run: cmake --build ${{ env.BUILD_DIR }} --config ${{ env.BUILD_TYPE }} --parallel $(nproc)
