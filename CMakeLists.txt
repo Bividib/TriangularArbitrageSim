@@ -64,4 +64,21 @@ include(GoogleTest)
 # Discover Google Tests within the UnitTests executable
 # CTest will run 'UnitTests' with a special flag to list all individual tests
 gtest_discover_tests(UnitTests) # <-- Use the name of your test executable here!
+
+# Add this block to your CMakeLists.txt
+# This ensures coverage flags are only added when -DCOVERAGE=ON is passed to CMake
+if (COVERAGE)
+    message(STATUS "Enabling code coverage instrumentation")
+    # For GCC/Clang (Ubuntu runner)
+    target_compile_options(Main PRIVATE --coverage)
+    target_link_libraries(Main PRIVATE --coverage)
+    target_compile_options(UnitTests PRIVATE --coverage)
+    target_link_libraries(UnitTests PRIVATE --coverage)
+
+    # Define build output paths for consistency, crucial for coverage tools to find artifacts
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib" CACHE PATH "Output directory for static libraries")
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib" CACHE PATH "Output directory for dynamic libraries")
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin" CACHE PATH "Output directory for executables")
+
+endif()
 # --- End Unit Test Setup ---
