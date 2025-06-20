@@ -2,19 +2,20 @@ name: C++ CI (Build, Test, Coverage)
 
 on:
   push:
-    branches: [ main, master, dev ] # Run on push to main or master branch
+    branches: [ main, master, dev ]
   pull_request:
-    branches: [ main, master, dev ] # Run on pull requests to main or master
+    branches: [ main, master, dev ]
 
 env:
-  BUILD_TYPE: Release # Or Debug, RelWithDebInfo
+  BUILD_TYPE: Release
   BUILD_DIR: ${{ github.workspace }}/build_ci
-  # Path for JUnit XML test results
   TEST_RESULTS_DIR: ${{ github.workspace }}/test-results
+  # VCPKG_TARGET_TRIPLET is still needed for the toolchain file
+  VCPKG_TARGET_TRIPLET: x64-linux # For Ubuntu runner, use x64-linux
 
 jobs:
   build-test-coverage:
-    runs-on: ubuntu-latest # Use a Linux runner for GCC/Clang and lcov
+    runs-on: ubuntu-latest
 
     steps:
     - name: Checkout code
@@ -25,19 +26,36 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y build-essential cmake lcov gcovr
 
+    # THIS IS THE CRUCIAL CHANGE FOR VCPKG MANIFEST MODE
+    # This action sets up VCPKG_ROOT and adds the toolchain file to CMake automatically
+    - name: Set up vcpkg
+      uses: lukka/run-vcpkg@v11 # Using a specific version for stability
+      with:
+        vcpkgArguments: 'boost-beast' # Specify packages you expect to use, helps pre-cache
+        # Set the triplet to ensure it matches your env: VCPKG_TARGET_TRIPLET
+        triplet: ${{ env.VCPKG_TARGET_TRIPLET }} 
+        # This will install vcpkg and its dependencies into its cache, then reuse it.
+        # It also implicitly sets up CMAKE_TOOLCHAIN_FILE for subsequent CMake calls.
+
     - name: Configure CMake
-      # Explicitly change to the directory where CMakeLists.txt resides
       working-directory: ${{ github.workspace }}
       run: |
-        ls -la # Will now list contents of GITHUB_WORKSPACE
+        ls -la
         echo "Current working directory: $(pwd)"
         echo "GITHUB_WORKSPACE: ${{ github.workspace }}" 
         mkdir -p ${{ env.BUILD_DIR }}
         
-        cmake -S . -B ${{ env.BUILD_DIR }} \ 
+        # When using lukka/run-vcpkg, the CMAKE_TOOLCHAIN_FILE is automatically
+        # set in the environment or passed by the action itself.
+        # You typically don't need to explicitly add -DCMAKE_TOOLCHAIN_FILE or -DVCPKG_TARGET_TRIPLET here
+        # IF you rely fully on the action's environment setup.
+        # However, explicitly setting it here provides clarity and robustness.
+        cmake -S . -B ${{ env.BUILD_DIR }} \
               -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
               -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-              -DCOVERAGE=ON
+              -DCOVERAGE=ON \
+              -DCMAKE_TOOLCHAIN_FILE=${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake \
+              -DVCPKG_TARGET_TRIPLET=${{ env.VCPKG_TARGET_TRIPLET }} # Still good practice to pass explicitly
 
     - name: Build Project (including tests)
       run: cmake --build ${{ env.BUILD_DIR }} --config ${{ env.BUILD_TYPE }} --parallel $(nproc)
@@ -46,14 +64,11 @@ jobs:
       run: mkdir -p ${{ env.TEST_RESULTS_DIR }}
 
     - name: Run Unit Tests and Generate JUnit XML
-      # CTest can generate JUnit XML directly. This is crucial for reporting actions.
-      # The '--output-on-failure' is still useful for immediate log review.
-      # '--output-junit <file>' specifies the output XML file.
       run: |
         ctest --test-dir ${{ env.BUILD_DIR }} \
               --output-on-failure \
               --output-junit ${{ env.TEST_RESULTS_DIR }}/test-results.xml
-      continue-on-error: true # Allow workflow to continue even if tests fail, so reports can be generated
+      continue-on-error: true
 
     - name: Publish Test Results (Green/Amber Dot)
       uses: dorny/test-reporter@v1 
@@ -66,38 +81,21 @@ jobs:
         summary: true 
 
     - name: Generate Code Coverage Report
-      # Adjust paths based on where your source and build directories are
       run: |
-        # Clean previous coverage data (important for sequential runs)
         lcov --directory ${{ env.BUILD_DIR }} --zerocounters
-
-        # Run tests again to generate fresh .gcda files
-        # It's important to run tests *after* zerocounters and *before* capture
         ctest --test-dir ${{ env.BUILD_DIR }}
-
-        # Capture coverage data
         lcov --capture --directory ${{ env.BUILD_DIR }} --output-file coverage.info
-
-        # Filter out system headers and third-party libraries (customize as needed)
-        # Assuming your main application source is in `src/` and tests are in `test/`
         lcov --remove coverage.info "/usr/*" --output-file coverage_filtered.info
-        lcov --remove coverage_filtered.info "*/_deps/*" --output-file coverage_filtered.info # For FetchContent
-        lcov --remove coverage_filtered.info "*/test/*" --output-file coverage_filtered.info # Exclude test files themselves
+        lcov --remove coverage_filtered.info "*/_deps/*" --output-file coverage_filtered.info
+        lcov --remove coverage.info "*/test/*" --output-file coverage_filtered.info
         
-        # Generate an HTML report
         genhtml coverage_filtered.info --output-directory ${{ env.BUILD_DIR }}/html_coverage
 
     - name: Display Coverage Summary
-      # Use gcovr to get a textual summary directly in the workflow log and job summary
-      # Make sure gcovr is installed (added in "Set up C++ Build Environment")
       run: |
-        gcovr --lcov -o coverage_gcovr.info ${{ env.BUILD_DIR }} # Generate gcovr specific info
+        gcovr --lcov -o coverage_gcovr.info ${{ env.BUILD_DIR }}
         echo "## Code Coverage Summary" >> $GITHUB_STEP_SUMMARY
         gcovr --summary --print-summary --exclude-unreachable-lines --filter "src/" >> $GITHUB_STEP_SUMMARY
-        # You can also generate a more detailed text report if desired:
-        # gcovr --relative-path ${{ github.workspace }} --filter "src/" --exclude-directories "test/" --html-details -o coverage_details.html
-        # echo "See detailed coverage: ${{ env.BUILD_DIR }}/coverage_details.html" >> $GITHUB_STEP_SUMMARY
-      # This step needs to run after coverage generation
       if: always()
 
     - name: Upload HTML Coverage Report as Artifact (Optional)
