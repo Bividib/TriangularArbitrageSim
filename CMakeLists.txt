@@ -1,16 +1,10 @@
-# Minimum CMake version required for this project
-# Always set this to a version you know works with the features you use.
-# Modern CMake often recommends 3.15 or higher.
 cmake_minimum_required(VERSION 3.15)
 
-# Define your project.
-# PROJECT_NAME is the name of your project.
-# LANGUAGES specifies the programming languages used (CXX for C++).
 project(TriangularArbitrageSim LANGUAGES CXX)
 
-# Specify the C++ standard to use.
-# It's good practice to explicitly set this.
-set(CMAKE_CXX_STANDARD 17) # Or 20, 23, etc.
+cmake_policy(SET CMP0167 NEW)
+
+set(CMAKE_CXX_STANDARD 17) 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF) # Prefer standard-compliant code
 
@@ -26,13 +20,21 @@ set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
 # Add an executable target.
-add_executable(Main src/main.cpp src/websocket/websocket.cpp)
+add_executable(Main 
+src/main.cpp 
+src/client/market_data_client.cpp
+src/common/common.cpp
+src/server/arbitrage_server.cpp
+src/server/arbitrage_session.cpp
+)
 
-cmake_policy(SET CMP0167 NEW)
+target_include_directories(Main PRIVATE
+    ${CMAKE_SOURCE_DIR}/src
+)
 
-find_package(Boost REQUIRED COMPONENTS beast)
+find_package(Boost REQUIRED COMPONENTS beast asio)
 
-target_link_libraries(Main PRIVATE Boost::beast)
+target_link_libraries(Main PRIVATE Boost::beast Boost::asio)
 
 # (Optional) Set output directory for executables/libraries (good practice)
 # This places your build artifacts in a predictable location.
@@ -44,15 +46,21 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 enable_testing() # Crucial: enables CTest infrastructure
 
 # Define a separate executable for tests
-add_executable(UnitTests test/test.cpp src/websocket/websocket.cpp)
-
-# Link your test executable to Google Test libraries
-target_link_libraries(UnitTests PRIVATE
-    GTest::gtest_main  # Links to gtest and gtest_main for convenient test execution
+add_executable(UnitTests 
+test/test.cpp 
+src/client/market_data_client.cpp
+src/common/common.cpp
+src/server/arbitrage_server.cpp
+src/server/arbitrage_session.cpp
 )
 
-# If your tests need to include headers from your main application source (src/)
-# so they can test your application's code, add the include directory:
+# Link test executable to Google Test libraries
+target_link_libraries(UnitTests PRIVATE
+    GTest::gtest_main  
+    Boost::beast
+    Boost::asio
+)
+
 target_include_directories(UnitTests PRIVATE
     ${CMAKE_SOURCE_DIR}/src # Allows tests to include headers from src/
 )
@@ -61,10 +69,9 @@ include(GoogleTest)
 
 # Discover Google Tests within the UnitTests executable
 # CTest will run 'UnitTests' with a special flag to list all individual tests
-gtest_discover_tests(UnitTests) # <-- Use the name of your test executable here!
+gtest_discover_tests(UnitTests) 
 
-# Add this block to your CMakeLists.txt
-# This ensures coverage flags are only added when -DCOVERAGE=ON is passed to CMake
+# Ensures coverage flags are only added when -DCOVERAGE=ON is passed to CMake
 if (COVERAGE)
     message(STATUS "Enabling code coverage instrumentation")
     # For GCC/Clang (Ubuntu runner)
