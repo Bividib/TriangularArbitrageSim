@@ -63,8 +63,6 @@ void Session::on_read(boost::beast::error_code ec, std::size_t bytes_transferred
     if (ec){
         fail(ec,"Read Data");
     } else {
-        // Read the data
-        // TODO: Read the actual market data with a data structure of choice
         std::string data = boost::beast::buffers_to_string(buffer.data());
         std::cout << "Server Session Received Data: " << data << "\n";
     }

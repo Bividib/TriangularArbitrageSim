@@ -1,5 +1,5 @@
 {
   "dependencies": [
-    "boost-beast"
+    "boost-beast","openssl","nlohmann-json"
   ]
 }
