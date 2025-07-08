@@ -15,6 +15,7 @@ class BinanceClient : public BaseClient, public std::enable_shared_from_this<Bin
 public:
     BinanceClient(boost::asio::io_context& ioc, boost::asio::ssl::context& ssl_ctx);
 
+    void set_callback(const std::shared_ptr<Server>& server) override;
     void async_connect(const std::string& host, const std::string& port, const std::string& target) override;
 private:
     // Use the 'override' keyword to ensure we are correctly implementing
@@ -27,10 +28,10 @@ private:
     
     void run_client() override;
 
-    void write() override; 
-    void on_write(boost::beast::error_code ec, std::size_t bytes_transferred) override;
     void read() override;
     void on_read(boost::beast::error_code ec, std::size_t bytes_transferred) override;
+
+    static std::vector<PriceLevel> parsePriceLevels(const nlohmann::json& json_array);
 
     // Binance-specific implementation details
     OrderBookTick to_struct(const nlohmann::json& json_data);

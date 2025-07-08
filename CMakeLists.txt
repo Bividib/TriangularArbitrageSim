@@ -27,7 +27,6 @@ src/main.cpp
 src/exchange/binance/binance_client.cpp
 src/common/common.cpp
 src/server/arbitrage_server.cpp
-src/server/arbitrage_session.cpp
 )
 
 target_include_directories(Main PRIVATE
@@ -53,7 +52,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 # src/client/market_data_client.cpp
 # src/common/common.cpp
 # src/server/arbitrage_server.cpp
-# src/server/arbitrage_session.cpp
 # )
 
 # # Link test executable to Google Test libraries

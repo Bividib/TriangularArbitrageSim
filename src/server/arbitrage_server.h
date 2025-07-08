@@ -1,35 +1,39 @@
 #ifndef ARBITRAGE_SERVER_H
 #define ARBITRAGE_SERVER_H
 
+#include "common/common.h"
+#include "common/trade_leg.h"
 #include <memory>
 #include <set>
 #include <boost/asio/io_context.hpp>
 #include <boost/beast/core.hpp>
 
-// Forward declare Session
-class Session;
+struct ServerConfig {
+    double profitThreshold;
+    double takerFee;
+    double initialNotional;
+
+    // Constructor to easily initialize config
+    ServerConfig(double profitThresh, double fee, double notional)
+        : profitThreshold(profitThresh), takerFee(fee), initialNotional(notional) {}
+};
 
 class Server : public std::enable_shared_from_this<Server> {
 public:
-    Server(boost::asio::io_context& ioc, boost::asio::ip::tcp::endpoint& endpoint);
-    Server();
+    Server(const ArbitragePath& path,
+           const ServerConfig& config);
 
-    // Method to start the server's acceptance loop (acts as the client)
-    void run();
-
-    //Alternatively receive updates from 3rd party clients
-    void on_update();
+    //Receive updates from 3rd party clients
+    void on_update(const OrderBookTick& update);
 
 private:
-    boost::asio::ip::tcp::acceptor acceptor;
-    boost::asio::io_context& io_context;
-    static const int MAX_CONNECTIONS; 
+    std::mutex mutex;
+    double currentNotional; 
+    long long lastUpdateId; 
+    const ArbitragePath path;
+    const ServerConfig config;
+    std::unordered_map<std::string, OrderBookTick> pairToPriceMap; 
 
-    // Set to hold shared pointers to active Session objects
-    std::set<std::shared_ptr<Session>> active_sessions; 
-
-    void do_accept();
-    void on_accept(boost::beast::error_code ec, boost::asio::ip::tcp::socket socket);
 };
 
 #endif ARBITRAGE_SERVER_H

@@ -29,32 +29,27 @@ BinanceClient::BinanceClient(boost::asio::io_context& ioc, boost::asio::ssl::con
     std::cout << "BinanceClient initialised" << "\n";
 }
 
+void BinanceClient::set_callback(const std::shared_ptr<Server>& server){
+    callback = server;
+}
+
 void BinanceClient::async_connect(const std::string& host_in, const std::string& port_in, const std::string& target_in) {
     host = host_in;
     port = port_in;
     target = target_in;
 
-    // try catch the read() 
-    try {
-        read();
-    } catch (const std::exception& e) {
-        std::cerr << "Error during read: " << e.what() << "\n";
-        return;
-    }
+    std::cout << "Connecting to Binance WebSocket at " << host << ":" << port << target << "\n";
+    
+    boost::asio::ip::tcp::resolver resolver(ws.get_executor());
 
-    const std::string& json_string = boost::beast::buffers_to_string(buffer.data());
-    std::cout << "Received: " << json_string << std::endl;
-
-    std::cout << "success!" << "\n";
-
-    // resolver.async_resolve(
-    //     host,
-    //     port,
-    //     boost::beast::bind_front_handler(
-    //         &BinanceClient::on_resolve,
-    //         shared_from_this()
-    //     )
-    // );
+    resolver.async_resolve(
+        host,
+        port,
+        boost::beast::bind_front_handler(
+            &BinanceClient::on_resolve,
+            shared_from_this()
+        )
+    );
 }
 
 void BinanceClient::on_resolve(boost::beast::error_code ec, boost::asio::ip::tcp::resolver::results_type results) {
@@ -132,41 +127,13 @@ void BinanceClient::on_read(boost::beast::error_code ec, std::size_t bytes_trans
     // Process the message
     const std::string& json_string = boost::beast::buffers_to_string(buffer.data());
     std::cout << "Received: " << json_string << std::endl;
-    // auto data = nlohmann::json::parse(json_string);
-    // auto tick_struct = to_struct(data);
-    // Call observers here
-
-
-    buffer.clear();
-    read(); // Listen for the next message
-}
-
-void BinanceClient::write() {
-    buffer.clear();
-    write_str_to_buf("Test Message", buffer);
+    auto data = nlohmann::json::parse(json_string);
+    auto tick_struct = to_struct(data);
     
-    ws.async_write(
-        buffer.data(),
-        boost::beast::bind_front_handler(
-            &BinanceClient::on_write,
-            shared_from_this()
-        )
-    );
-}
-
-void BinanceClient::on_write(boost::beast::error_code ec, std::size_t bytes_transferred) {
-    boost::ignore_unused(bytes_transferred);
-    if (ec) return fail(ec, "write");
-
-    std::cout << "Client Write successful" << "\n";
-    // For testing, we can close after writing. In a real app, you wouldn't.
-    ws.async_close(
-        boost::beast::websocket::close_code::normal,
-        boost::beast::bind_front_handler(
-            &BinanceClient::on_close,
-            shared_from_this()
-        )
-    );
+    callback->on_update(tick_struct);
+    
+    buffer.consume(buffer.size());
+    read(); // Listen for the next message
 }
 
 void BinanceClient::on_close(boost::beast::error_code ec) {
@@ -174,14 +141,49 @@ void BinanceClient::on_close(boost::beast::error_code ec) {
     std::cout << "Client connection closed gracefully" << "\n";
 }
 
+std::vector<PriceLevel> BinanceClient::parsePriceLevels(const nlohmann::json& json_array) {
+    std::vector<PriceLevel> levels_vec;
+
+    for (const auto& level_json : json_array) {
+        if (level_json.is_array() && level_json.size() == 2) {
+            try {
+                double price = std::stod(level_json.at(0).get<std::string>());
+                double quantity = std::stod(level_json.at(1).get<std::string>());
+                levels_vec.emplace_back(price, quantity);
+            } catch (const std::exception& e) {
+                std::cerr << "Error parsing " << e.what() << "\n";
+                throw std::runtime_error("Failed to parse price level: " + std::string(e.what()));
+            }
+        } else {
+            std::cerr << "Invalid price level format: " << level_json.dump() << "\n";
+            throw std::runtime_error("Invalid price level format in JSON data");
+        }
+    }
+    return levels_vec;
+}
+
 OrderBookTick BinanceClient::to_struct(const nlohmann::json& json_data) {
-    const auto& data = json_data.at("data");
-    const long long& updateId = data.at("u").get<long long>();
-    const std::string& symbol = data.at("s").get<std::string>();
-    const std::string& bid_price = data.at("b").get<std::string>();
-    const std::string& bid_qty = data.at("B").get<std::string>();
-    const std::string& ask_price = data.at("a").get<std::string>();
-    const std::string& ask_qty = data.at("A").get<std::string>();
-    
-    return OrderBookTick(updateId, symbol, bid_price, bid_qty, ask_price, ask_qty);
+    try {
+        const auto& data = json_data.at("data");
+        const long long updateId = data.at("lastUpdateId").get<long long>(); 
+        
+        std::string full_stream_name = json_data.at("stream").get<std::string>();
+        std::string symbol = full_stream_name.substr(0, full_stream_name.find('@'));
+
+        std::vector<PriceLevel> bids_vec = parsePriceLevels(data.at("bids"));
+        std::vector<PriceLevel> asks_vec = parsePriceLevels(data.at("asks"));
+
+        long long localTimestampMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch()
+        ).count();
+
+        return OrderBookTick(updateId, symbol, std::move(bids_vec), std::move(asks_vec), localTimestampMs);
+
+    } catch (const nlohmann::json::exception& e) {
+        std::cerr << "JSON parsing error in BinanceClient::to_struct: " << e.what() << "\n";
+        throw std::runtime_error("Failed to parse Binance order book JSON data: " + std::string(e.what()));
+    } catch (const std::exception& e) {
+        std::cerr << "Standard exception in BinanceClient::to_struct: " << e.what() << "\n";
+        throw; 
+    }
 }

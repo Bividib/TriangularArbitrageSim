@@ -2,6 +2,7 @@
 #define MARKET_DATA_CLIENT_H
 
 #include "common/common.h"
+#include "server/arbitrage_server.h"
 #include <memory>
 #include <string>
 #include <boost/asio/io_context.hpp>
@@ -30,6 +31,9 @@ public:
     // Virtual destructor is essential for classes with virtual functions
     virtual ~Client() = default;
 
+    // Add a callback , accepting a server object
+    virtual void set_callback(const std::shared_ptr<Server>& server) = 0;
+
     // Public function to start the connection process
     virtual void async_connect(const std::string& host, const std::string& port, const std::string& target) = 0;
 
@@ -40,6 +44,7 @@ protected:
     std::string host;
     std::string port;
     std::string target;
+    std::shared_ptr<Server> callback;
 
     // These are the asynchronous handlers for the connection steps.
     // They are now pure virtual, forcing any concrete derived class to implement them.
@@ -73,9 +78,6 @@ protected:
 
     // Abstract interface for reading and writing data.
     // These are pure virtual because a specific client (like BinanceClient)
-    // will define how to handle reads and what to write.
-    virtual void write() = 0;
-    virtual void on_write(boost::beast::error_code ec, std::size_t bytes_transferred) = 0;
     virtual void read() = 0;
     virtual void on_read(boost::beast::error_code ec, std::size_t bytes_transferred) = 0;
 };

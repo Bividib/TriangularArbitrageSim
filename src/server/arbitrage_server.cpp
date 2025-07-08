@@ -2,73 +2,68 @@
 #define NOMINMAX    
 
 #include "arbitrage_server.h"
-#include "arbitrage_session.h"
 #include "common/common.h"
-
 #include <boost/asio/strand.hpp>
 #include <iostream>
+#include <cmath>
 
-const int Server::MAX_CONNECTIONS = 5;
-
-Server::Server(boost::asio::io_context& ioc, boost::asio::ip::tcp::endpoint& endpoint) : acceptor(ioc), io_context(ioc) {
-    boost::beast::error_code ec; 
-
-    //Open the acceptor 
-    acceptor.open(endpoint.protocol(),ec);
-
-    if (ec){
-        fail(ec,"Open Acceptor");
-    }
-
-    //Allow address reuse 
-    acceptor.set_option(boost::asio::socket_base::reuse_address(true), ec);
-
-    if (ec){
-        fail(ec,"Set Acceptor Option");
-    }
-
-    //Bind to the server address 
-    acceptor.bind(endpoint,ec);
-
-    if (ec){
-        fail(ec,"Address Bind");
-    }
-
-    //Start listening for the single connection
-    acceptor.listen(MAX_CONNECTIONS,ec);
-
-    if (ec){
-        fail(ec,"Start Listening:");
-    }
-
-    std::cout << "Server listening on " <<  endpoint.address().to_string() << ":" << std::to_string(endpoint.port()) << "\n";
+Server::Server(const ArbitragePath& path, 
+               const ServerConfig& config)
+               : lastUpdateId(0), 
+               path(path),
+               config(config),
+               currentNotional(config.initialNotional) {
 }
 
-void Server::run(){
-    do_accept();
-}
+void Server::on_update(const OrderBookTick& update) {
+    std::lock_guard<std::mutex> lock(mutex);
 
-void Server::do_accept(){
-    std::cout << "Server waiting for incoming TCP connection request ..." << "\n";
-    // Accept underlying TCP Connection 
-    acceptor.async_accept(
-        boost::asio::make_strand(io_context),
-        boost::beast::bind_front_handler(
-            &Server::on_accept,
-            shared_from_this())
-        );
-}
+    auto it = pairToPriceMap.find(update.symbol);
 
-void Server::on_accept(boost::beast::error_code ec, boost::asio::ip::tcp::socket socket){
-    if (ec){
-        fail(ec, "Accept TCP Connection");
+    // Store most recent update for each pair
+    if (it != pairToPriceMap.end()) {
+        if (it->second.updateId <= update.updateId) {
+            return;
+        } else {
+            it->second = update; 
+        }
     } else {
-        std::cout << "Server accepted TCP handshake" << "\n";
-        //Create a session on a separate thread for this connection
-        //Wrap in shared pointer to prevent socket deallocation 
-        std::make_shared<Session>(std::move(socket))->run();
+        pairToPriceMap[update.symbol] = update; 
     }
 
-    // Prepare listener to the next client TCP Connection Request
-    do_accept();
+    // Wait until we have at least 3 pairs to check for arbitrage opportunities
+    if (pairToPriceMap.size() < 3){
+        return; 
+    }
+
+    
+    const auto& trade_leg1 = path.legs[0];
+    const auto& trade_leg2 = path.legs[1];
+    const auto& trade_leg3 = path.legs[2];
+
+    // Latest tick updates for each leg of the arbitrage path
+    const auto& leg1_tick = pairToPriceMap.find(trade_leg1.symbol)->second;
+    const auto& leg2_tick = pairToPriceMap.find(trade_leg2.symbol)->second;
+    const auto& leg3_tick = pairToPriceMap.find(trade_leg3.symbol)->second;
+
+    // Scale up minimum expected notional amount for arbitrage
+    const double thresholdNotional = config.initialNotional * (1 + config.profitThreshold);
+
+    // Subtract taker fees 
+    double newNotional = config.initialNotional;
+    
+    double price = trade_leg1.getEffectiveRate(leg1_tick,newNotional);
+
+    if (price <= 0){
+        return; 
+    }
+
+    // At this point we have converted initial notional from currency 1 to currency 2
+    newNotional *= price;
+
+
+    // Subtract taker fees
+    newNotional = config.initialNotional * std::pow(1 - config.takerFee, 3); 
+    
+
 }
