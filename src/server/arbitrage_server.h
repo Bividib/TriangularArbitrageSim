@@ -36,4 +36,4 @@ private:
 
 };
 
-#endif ARBITRAGE_SERVER_H
+#endif //ARBITRAGE_SERVER_H
