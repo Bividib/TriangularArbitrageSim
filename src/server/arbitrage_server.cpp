@@ -20,50 +20,45 @@ void Server::on_update(const OrderBookTick& update) {
 
     auto it = pairToPriceMap.find(update.symbol);
 
-    // Store most recent update for each pair
-    if (it != pairToPriceMap.end()) {
-        if (it->second.updateId <= update.updateId) {
-            return;
-        } else {
-            it->second = update; 
-        }
-    } else {
-        pairToPriceMap[update.symbol] = update; 
+    if (it != pairToPriceMap.end() && update.updateId <= it->second.updateId) {
+        return;
     }
+    
+    pairToPriceMap.insert_or_assign(update.symbol, update);
 
     // Wait until we have at least 3 pairs to check for arbitrage opportunities
     if (pairToPriceMap.size() < 3){
         return; 
     }
 
-    
-    const auto& trade_leg1 = path.legs[0];
-    const auto& trade_leg2 = path.legs[1];
-    const auto& trade_leg3 = path.legs[2];
-
-    // Latest tick updates for each leg of the arbitrage path
-    const auto& leg1_tick = pairToPriceMap.find(trade_leg1.symbol)->second;
-    const auto& leg2_tick = pairToPriceMap.find(trade_leg2.symbol)->second;
-    const auto& leg3_tick = pairToPriceMap.find(trade_leg3.symbol)->second;
-
     // Scale up minimum expected notional amount for arbitrage
     const double thresholdNotional = config.initialNotional * (1 + config.profitThreshold);
 
-    // Subtract taker fees 
     double newNotional = config.initialNotional;
-    
-    double price = trade_leg1.getEffectiveRate(leg1_tick,newNotional);
 
-    if (price <= 0){
-        return; 
+    // Loop 3 all three legs of the arbitrage path
+    for (int i = 0; i < 3; ++i) {
+        const auto& trade_leg = path.legs[i];
+        const auto& leg_tick = pairToPriceMap.find(trade_leg.symbol)->second;
+        double nextNotional = trade_leg.getEffectiveRate(leg_tick,newNotional);
+
+        if (nextNotional <= 0){
+            return;
+        }
+
+        newNotional = nextNotional;
     }
 
-    // At this point we have converted initial notional from currency 1 to currency 2
-    newNotional *= price;
-
-
     // Subtract taker fees
-    newNotional = config.initialNotional * std::pow(1 - config.takerFee, 3); 
-    
+    newNotional = newNotional * std::pow(1 - config.takerFee, 3); 
+
+    if (newNotional >= thresholdNotional) {
+        std::cout << "Arbitrage opportunity detected!\n";
+        std::cout << "Initial Traded Notional: " << config.initialNotional << "\n";
+        std::cout << "Final Notional after Trades: " << newNotional << "\n";
+        std::cout << "Profit: " << (newNotional - config.initialNotional) << "\n";
+
+        currentNotional = newNotional;
+    } 
 
 }

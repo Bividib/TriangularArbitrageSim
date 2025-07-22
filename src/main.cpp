@@ -17,10 +17,23 @@ int main() {
 
     // Use TLS Version 1.2 
     boost::asio::ssl::context ctx(boost::asio::ssl::context::tlsv12_client);
+
+    ArbitragePath path(
+        "btc",
+        TradeLeg("btcusdt", false), 
+        TradeLeg("ethusdt", true),
+        TradeLeg("ethbtc", false)
+    );
+
+    ServerConfig server_config(
+        0.001, // profit threshold of 0.1%
+        0.0005, // taker fee of 0.05%
+        0.2 // initial notional amount
+    );
     
-    auto server = std::make_shared<Server>("btcusdt", "ethbtc", "ethusdt", 0.01,0.001);
+    auto server = std::make_shared<Server>(path,server_config);
     auto client = std::make_shared<BinanceClient>(io_context,ctx);
-    client->add_callback(server);
+    client->set_callback(server);
     client->async_connect(host, port, target);
 
     io_context.run();
