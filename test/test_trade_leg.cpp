@@ -99,3 +99,39 @@ TEST_F(TradeLegTest, CalculateVwapNegativeQuantity) {
     double vwap = leg.calculateVwap(tick->bids, -5.0);
     EXPECT_DOUBLE_EQ(vwap, 0.0); 
 }
+
+TEST_F(TradeLegTest, GetEffectiveRateBid) {
+    TradeLeg leg("btcusdt", false);
+    double rate = leg.getEffectiveRate(*tick, 1.0);
+    EXPECT_DOUBLE_EQ(rate, 99.0);
+}
+
+TEST_F(TradeLegTest, GetEffectiveRateWithinSecondLevelBid) {
+    TradeLeg leg("btcusdt", false);
+    double rate = leg.getEffectiveRate(*tick, 2.0);
+    EXPECT_DOUBLE_EQ(rate, 98.75);
+}
+
+TEST_F(TradeLegTest, GetEffectiveRateAsk) {
+    TradeLeg leg("btcusdt", true);
+    double rate = leg.getEffectiveRate(*tick, 1.0);
+    EXPECT_DOUBLE_EQ(rate, 1/100.0);
+}
+
+TEST_F(TradeLegTest, GetEffectiveRateWithinSecondLevelAsk) {
+    TradeLeg leg("btcusdt", true);
+    double rate = leg.getEffectiveRate(*tick, 1.5);
+    EXPECT_NEAR(rate, 1 / ((100.0 * 2.0 + 101.0 * 1.0) / 3.0), 1e-9);
+}
+
+TEST_F(TradeLegTest, GetEffectiveRateZeroTradeSize) {
+    TradeLeg leg("btcusdt", false);
+    double rate = leg.getEffectiveRate(*tick, 0.0);
+    EXPECT_DOUBLE_EQ(rate, 0.0);
+}
+
+TEST_F(TradeLegTest, GetEffectiveRateNegativeTradeSize) {
+    TradeLeg leg("btcusdt", false);
+    double rate = leg.getEffectiveRate(*tick, -1.0);
+    EXPECT_DOUBLE_EQ(rate, 0.0);
+}
