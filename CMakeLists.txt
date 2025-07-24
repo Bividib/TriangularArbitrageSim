@@ -49,7 +49,7 @@ enable_testing() # Crucial: enables CTest infrastructure
 # Define a separate executable for tests
 add_executable(UnitTests 
 test/test.cpp 
-src/main.cpp 
+test/test_trade_leg.cpp
 src/exchange/binance/binance_client.cpp
 src/common/common.cpp
 src/server/arbitrage_server.cpp
