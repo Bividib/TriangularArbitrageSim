@@ -35,6 +35,8 @@ struct OrderBookTick {
           asks(std::move(a)), 
           localTimestampMs(ts) {}
 
+    OrderBookTick(){}
+
 
     double getBestBidPrice() const { 
         if (!bids.empty()) {

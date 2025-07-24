@@ -35,6 +35,7 @@ private:
 
     // Binance-specific implementation details
     OrderBookTick to_struct(const nlohmann::json& json_data);
+    boost::asio::ip::tcp::resolver resolver;
     static const std::string WS_CLIENT_HEADER;
 };
 

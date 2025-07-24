@@ -4,6 +4,7 @@
 #include <iostream>
 #include "server/arbitrage_server.h"
 #include <boost/asio/ssl.hpp>
+#include <boost/asio/executor_work_guard.hpp>
 #include "exchange/binance/binance_client.h"
 #include <memory>
 
@@ -14,6 +15,7 @@ int main() {
     const std::string target = "/stream?streams=btcusdt@depth5@100ms/ethbtc@depth5@100ms/ethusdt@depth5@100ms";
 
     boost::asio::io_context io_context; 
+    auto work_guard = boost::asio::make_work_guard(io_context);
 
     // Use TLS Version 1.2 
     boost::asio::ssl::context ctx(boost::asio::ssl::context::tlsv12_client);

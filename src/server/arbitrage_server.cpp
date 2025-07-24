@@ -40,13 +40,13 @@ void Server::on_update(const OrderBookTick& update) {
     for (int i = 0; i < 3; ++i) {
         const auto& trade_leg = path.legs[i];
         const auto& leg_tick = pairToPriceMap.find(trade_leg.symbol)->second;
-        double nextNotional = trade_leg.getEffectiveRate(leg_tick,newNotional);
+        double rate = trade_leg.getEffectiveRate(leg_tick,newNotional);
 
-        if (nextNotional <= 0){
+        if (rate <= 0){
             return;
         }
 
-        newNotional = nextNotional;
+        newNotional = newNotional * rate;
     }
 
     // Subtract taker fees

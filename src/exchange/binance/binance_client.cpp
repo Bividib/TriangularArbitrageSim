@@ -19,7 +19,7 @@ void BaseClient::write_str_to_buf(const std::string& str, boost::beast::flat_buf
 const std::string BinanceClient::WS_CLIENT_HEADER = "TriangularArbitrageAsyncBinanceWsClient";
 
 BinanceClient::BinanceClient(boost::asio::io_context& ioc, boost::asio::ssl::context& ssl_ctx) 
-    : BaseClient(ioc, ssl_ctx) {
+    : BaseClient(ioc, ssl_ctx), resolver(ioc) {
     ws.set_option(boost::beast::websocket::stream_base::timeout::suggested(boost::beast::role_type::client));
     ws.set_option(boost::beast::websocket::stream_base::decorator(
         [](boost::beast::websocket::request_type& req) {
@@ -39,8 +39,6 @@ void BinanceClient::async_connect(const std::string& host_in, const std::string&
     target = target_in;
 
     std::cout << "Connecting to Binance WebSocket at " << host << ":" << port << target << "\n";
-    
-    boost::asio::ip::tcp::resolver resolver(ws.get_executor());
 
     resolver.async_resolve(
         host,
