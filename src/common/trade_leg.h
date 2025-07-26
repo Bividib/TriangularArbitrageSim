@@ -14,7 +14,7 @@ struct TradeLeg {
     TradeLeg(const std::string& sym, bool flip)
         : symbol(sym), requiresInversion(flip) {}
 
-    static double calculateVwap(const std::vector<PriceLevel>& levels, double desired_quantity) {
+    static double calculateVwapBid(const std::vector<PriceLevel>& levels, double desired_quantity) {
         if (desired_quantity <= 0) {
             return 0.0; 
         }
@@ -35,42 +35,93 @@ struct TradeLeg {
             remaining_quantity_to_fill -= fill_quantity;
         }
 
-        if (total_quantity_filled < desired_quantity) {
-            std::cerr << "Warning: Insufficient liquidity. Desired: " << desired_quantity 
-                    << ", Filled: " << total_quantity_filled << ". Cannot fulfill trade.\n";
-            return 0.0;
-        }
-
-        if (total_quantity_filled <= 0) {
+        if (total_quantity_filled < desired_quantity || total_quantity_filled <= 0) {
+            // std::cerr << "Warning: Insufficient liquidity. Desired: " << desired_quantity 
+            //         << ", Filled: " << total_quantity_filled << ". Cannot fulfill trade.\n";
             return 0.0;
         }
 
         return total_price_x_quantity / total_quantity_filled;
     }
 
-    double getEffectiveRate(const OrderBookTick& tick, double trade_size_for_this_leg) const {
-        if (trade_size_for_this_leg <= 0) {
-            return 0.0; 
+    static double calculateVwapAsk(const std::vector<PriceLevel>& levels, double old_currency) {
+        if (old_currency <= 0.0) {
+            return 0.0;
+        }
+
+        const double EPSILON = std::numeric_limits<double>::epsilon() * old_currency;
+
+        double total_eth_acquired = 0.0;
+        double usdt_spent_actual = 0.0; 
+        double remaining_usdt_to_spend = old_currency;
+
+        for (const auto& level : levels) {
+            double price = level.price;
+            double available_eth_at_level = level.quantity;
+
+
+            double cost_to_buy_all_at_level = price * available_eth_at_level;
+
+            if (remaining_usdt_to_spend >= cost_to_buy_all_at_level) {
+                // Buy all the ETH at this level
+                total_eth_acquired += available_eth_at_level;
+                usdt_spent_actual += cost_to_buy_all_at_level;
+                remaining_usdt_to_spend -= cost_to_buy_all_at_level;
+            } else {
+                // Buy only a portion of ETH with the remaining USDT
+                // This is where the division of (remaining_usdt / price) happens
+                double eth_to_buy_with_remaining_usdt = remaining_usdt_to_spend / price;
+
+                total_eth_acquired += eth_to_buy_with_remaining_usdt;
+                usdt_spent_actual += remaining_usdt_to_spend; // All remaining USDT is spent here
+                remaining_usdt_to_spend = 0.0; // No USDT left
+
+                break; // All funds spent, stop processing further levels
+            }
+
+            // If all old_currency has been spent (or very close to it due to precision), break
+            if (remaining_usdt_to_spend <= EPSILON) {
+                remaining_usdt_to_spend = 0.0; 
+                break;
+            }
+        }
+
+        if (total_eth_acquired > 0.0 && remaining_usdt_to_spend == 0.0) {
+            // The average price is the total USDT spent divided by the total ETH acquired.
+            return usdt_spent_actual / total_eth_acquired;
+        } 
+
+        std::cerr << "Warning: Trade not fully executed due to insufficient ETH liquidity. "
+            << "Desired USDT: " << old_currency
+            << ", Actually spent: " << usdt_spent_actual
+            << ", Remaining USDT: " << remaining_usdt_to_spend << "\n";
+
+        return 0.0;
+    }
+
+    double TradeLeg::getEffectiveRate(const OrderBookTick& tick, double current_notional_in_previous_leg_currency) const {
+        if (current_notional_in_previous_leg_currency <= 0 || tick.bids.empty() || tick.asks.empty()) {
+            return 0.0;
         }
 
         double rate = 0.0;
-        if (requiresInversion) {
-            rate = calculateVwap(tick.asks, trade_size_for_this_leg);
+
+        if (requiresInversion) { 
+            double vwap_price_quote_per_base = calculateVwapAsk(tick.asks, current_notional_in_previous_leg_currency);
             
-            if (rate > 0) { 
-                return 1.0 / rate;
+            if (vwap_price_quote_per_base > 0) {
+                return 1.0 / vwap_price_quote_per_base;
             } else {
-                std::cerr << "Warning: VWAP ask price is zero or negative for " << symbol << ". Cannot calculate rate." << std::endl;
                 return 0.0;
             }
-        } else {
-            rate = calculateVwap(tick.bids, trade_size_for_this_leg);
-            
-            if (rate <= 0) {
-                 std::cerr << "Warning: VWAP bid price is zero or negative for " << symbol << ". Cannot calculate rate." << std::endl;
-                 return 0.0;
+        } else { 
+            double vwap_price_quote_per_base = calculateVwapBid(tick.bids, current_notional_in_previous_leg_currency);
+
+            if (vwap_price_quote_per_base > 0) {
+                return vwap_price_quote_per_base;
+            } else {
+                return 0.0;
             }
-            return rate;
         }
     }
 };
