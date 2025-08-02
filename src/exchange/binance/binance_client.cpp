@@ -124,9 +124,9 @@ void BinanceClient::on_read(boost::beast::error_code ec, std::size_t bytes_trans
 
     // Process the message
     const std::string& json_string = boost::beast::buffers_to_string(buffer.data());
-    std::cout << "Received: " << json_string << std::endl;
+    // std::cout << "Received: " << json_string << std::endl;
     auto data = nlohmann::json::parse(json_string);
-    auto tick_struct = to_struct(data);
+    auto tick_struct = to_struct(data,json_string);
     
     callback->on_update(tick_struct);
     
@@ -160,7 +160,7 @@ std::vector<PriceLevel> BinanceClient::parsePriceLevels(const nlohmann::json& js
     return levels_vec;
 }
 
-OrderBookTick BinanceClient::to_struct(const nlohmann::json& json_data) {
+OrderBookTick BinanceClient::to_struct(const nlohmann::json& json_data, const std::string& json_string) {
     try {
         const auto& data = json_data.at("data");
         const long long updateId = data.at("lastUpdateId").get<long long>(); 
@@ -175,7 +175,7 @@ OrderBookTick BinanceClient::to_struct(const nlohmann::json& json_data) {
             std::chrono::system_clock::now().time_since_epoch()
         ).count();
 
-        return OrderBookTick(updateId, symbol, std::move(bids_vec), std::move(asks_vec), localTimestampMs);
+        return OrderBookTick(updateId, symbol,json_string, std::move(bids_vec), std::move(asks_vec), localTimestampMs);
 
     } catch (const nlohmann::json::exception& e) {
         std::cerr << "JSON parsing error in BinanceClient::to_struct: " << e.what() << "\n";

@@ -1,8 +1,9 @@
 #ifndef ARBITRAGE_SERVER_H
 #define ARBITRAGE_SERVER_H
 
-#include "common/common.h"
+#include "common/order_book.h"
 #include "common/trade_leg.h"
+#include "file/trade_file_writer.h"
 #include <memory>
 #include <set>
 #include <boost/asio/io_context.hpp>
@@ -11,11 +12,13 @@
 struct ServerConfig {
     double profitThreshold;
     double takerFee;
-    double initialNotional;
+    double initialNotional; 
+    double thresholdNotional;
+
 
     // Constructor to easily initialize config
-    ServerConfig(double profitThresh, double fee, double notional)
-        : profitThreshold(profitThresh), takerFee(fee), initialNotional(notional) {}
+    ServerConfig(double profitThresh, double fee, double initialNotional)
+        : profitThreshold(profitThresh), takerFee(std::pow(1 - fee, 3)), initialNotional(initialNotional), thresholdNotional((profitThreshold+1)*initialNotional) {}
 };
 
 class Server : public std::enable_shared_from_this<Server> {
@@ -23,15 +26,21 @@ public:
     Server(const ArbitragePath& path,
            const ServerConfig& config);
 
+    Server(const ArbitragePath& path,
+           const ServerConfig& config,
+           std::unique_ptr<TradeFileWriter>&& writer);
+
     //Receive updates from 3rd party clients
-    void on_update(const OrderBookTick& update);
+    void on_update(OrderBookTick& update);
+
 
 private:
     std::mutex mutex;
-    double currentNotional; 
+    double currentNotional;
     long long lastUpdateId; 
     const ArbitragePath path;
     const ServerConfig config;
+    const std::unique_ptr<TradeFileWriter> tradeFileWriter;
     std::unordered_map<std::string, OrderBookTick> pairToPriceMap; 
 
 };

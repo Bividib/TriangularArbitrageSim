@@ -13,7 +13,7 @@ int main() {
     const std::string host = "stream.binance.com";
     const std::string port = "9443";
     // const std::string target = "/stream?streams=btcusdt@depth5@100ms/ethbtc@depth5@100ms/ethusdt@depth5@100ms";
-    const std::string target = "/stream?streams=btcusdt@depth5@100ms/ethbtc@depth5@100ms/ethusdt@depth5@100ms";
+    const std::string target = "/stream?streams=btcusdt@depth5@1000ms/ethbtc@depth5@1000ms/ethusdt@depth5@1000ms";
 
     boost::asio::io_context io_context; 
     auto work_guard = boost::asio::make_work_guard(io_context);
@@ -31,7 +31,7 @@ int main() {
     ServerConfig server_config(
         0.00001, // profit threshold of 0.1%
         0.00005, // taker fee of 0.05%
-        0.001 // initial notional amount
+        0.01 // initial notional amount
     );
     
     auto server = std::make_shared<Server>(path,server_config);

@@ -1,7 +1,7 @@
 #ifndef MARKET_DATA_CLIENT_H
 #define MARKET_DATA_CLIENT_H
 
-#include "common/common.h"
+#include "common/trade_leg.h"
 #include "server/arbitrage_server.h"
 #include <memory>
 #include <string>

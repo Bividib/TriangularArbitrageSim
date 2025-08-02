@@ -27,7 +27,8 @@ FetchContent_MakeAvailable(googletest)
 add_executable(Main 
 src/main.cpp 
 src/exchange/binance/binance_client.cpp
-src/common/common.cpp
+src/common/order_book.cpp
+src/file/trade_file_writer.cpp
 src/server/arbitrage_server.cpp
 )
 
@@ -53,7 +54,8 @@ add_executable(UnitTests
 test/test.cpp 
 test/test_trade_leg.cpp
 src/exchange/binance/binance_client.cpp
-src/common/common.cpp
+src/common/order_book.cpp
+src/file/trade_file_writer.cpp
 src/server/arbitrage_server.cpp
 )
 

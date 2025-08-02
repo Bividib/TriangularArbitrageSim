@@ -5,7 +5,7 @@
 #include <iostream> 
 #include <array>
 #include <algorithm> 
-#include "common/common.h" 
+#include "common/order_book.h" 
 
 struct TradeLeg {
     std::string symbol;         // The actual trading pair symbol (e.g., "BTCUSDT")
@@ -99,7 +99,7 @@ struct TradeLeg {
         return 0.0;
     }
 
-    double TradeLeg::getEffectiveRate(const OrderBookTick& tick, double current_notional_in_previous_leg_currency) const {
+    double getEffectiveRate(const OrderBookTick& tick, double current_notional_in_previous_leg_currency) const {
         if (current_notional_in_previous_leg_currency <= 0 || tick.bids.empty() || tick.asks.empty()) {
             return 0.0;
         }

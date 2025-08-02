@@ -25,7 +25,7 @@ protected:
             PriceLevel(97.0, 3.5)
         };
         tick->updateId = 123456789;
-        tick->localTimestampMs = 1609459200000; 
+        tick->tickInitTime = 1609459200000; 
 
         ethusdt_tick = std::make_unique<OrderBookTick>();
         ethusdt_tick->symbol = "ethusdt";

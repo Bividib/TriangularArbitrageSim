@@ -18,22 +18,30 @@ struct PriceLevel {
 struct OrderBookTick {
     long long updateId;
     std::string symbol;
+    std::string jsonStr;
     
     std::vector<PriceLevel> bids; // Sorted from highest bid price to lowest
     std::vector<PriceLevel> asks; // Sorted from lowest ask price to highest
 
-    long long localTimestampMs;
+    long long tickInitTime;
+    long long processTime; 
+
+    double unrealisedPnl; 
 
     OrderBookTick(long long u, 
                   std::string s, 
+                  std::string json,
                   std::vector<PriceLevel> b, 
                   std::vector<PriceLevel> a, 
                   long long ts = 0)
         : updateId(u), 
           symbol(std::move(s)), 
+          jsonStr(std::move(json)),
           bids(std::move(b)), 
           asks(std::move(a)), 
-          localTimestampMs(ts) {}
+          tickInitTime(ts), 
+          processTime(0),
+          unrealisedPnl(0) {}
 
     OrderBookTick(){}
 
