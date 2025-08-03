@@ -10,6 +10,9 @@
 
 int main() {
 
+    // Read environment variables for the path to write data to 
+    std::string trade_write_file_path = std::getenv("TRADE_WRITE_FILE_PATH");
+
     const std::string host = "stream.binance.com";
     const std::string port = "9443";
     // const std::string target = "/stream?streams=btcusdt@depth5@100ms/ethbtc@depth5@100ms/ethusdt@depth5@100ms";
@@ -33,10 +36,17 @@ int main() {
         0.00005, // taker fee of 0.05%
         0.01 // initial notional amount
     );
-    
-    auto server = std::make_shared<Server>(path,server_config);
+
     auto client = std::make_shared<BinanceClient>(io_context,ctx);
-    client->set_callback(server);
+
+    if (trade_write_file_path.empty()) {
+        auto server = std::make_shared<Server>(path, server_config);
+        client->set_callback(server);
+    } else {
+        auto server = std::make_shared<Server>(path, server_config, std::make_unique<TradeFileWriter>(trade_write_file_path));
+        client->set_callback(server);
+    }
+
     client->async_connect(host, port, target);
 
     io_context.run();
