@@ -16,7 +16,9 @@ public:
      * - JSON string representation of the tick
      * - Time the tick was created 
      * - Time the server took to process the tick 
-     * - Unrealised p&l without taker fees
+     * - Unrealised p&l
+     * - Traded Notional
+     * - Bottleneck Leg Identifier (minimum of the 3 for getting started notional)
      * 
      * @param tick The OrderBookTick to write to the file
      */

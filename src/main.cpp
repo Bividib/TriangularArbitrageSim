@@ -10,13 +10,18 @@
 
 int main() {
 
-    // Read environment variables for the path to write data to 
-    std::string trade_write_file_path = std::getenv("TRADE_WRITE_FILE_PATH");
+    const char* env_path = std::getenv("BINANCE_UPDATE_FILE_PATH");
+    const char* env_target = std::getenv("BINANCE_STREAM_TARGET");
+    const char* env_arbitrage_path = std::getenv("BINANCE_ARBITRAGE_PATH");
+    const char* env_profit_threshold = std::getenv("BINANCE_PROFIT_THRESHOLD");
+    const char* env_taker_fee = std::getenv("BINANCE_TAKER_FEE");
 
     const std::string host = "stream.binance.com";
     const std::string port = "9443";
-    // const std::string target = "/stream?streams=btcusdt@depth5@100ms/ethbtc@depth5@100ms/ethusdt@depth5@100ms";
-    const std::string target = "/stream?streams=btcusdt@depth5@1000ms/ethbtc@depth5@1000ms/ethusdt@depth5@1000ms";
+
+    const std::string trade_write_file_path = env_path ? env_path : "";
+    const std::string target = env_target ? env_target : "/stream?streams=btcusdt@depth5@1000ms/ethbtc@depth5@1000ms/ethusdt@depth5@1000ms";
+    const std::string arbitrage_path = env_arbitrage_path ? env_arbitrage_path : "btc:btcusdt:BUY,ethusdt:SELL,ethbtc:BUY";
 
     boost::asio::io_context io_context; 
     auto work_guard = boost::asio::make_work_guard(io_context);
@@ -24,17 +29,11 @@ int main() {
     // Use TLS Version 1.2 
     boost::asio::ssl::context ctx(boost::asio::ssl::context::tlsv12_client);
 
-    ArbitragePath path(
-        "btc",
-        TradeLeg("btcusdt", false), 
-        TradeLeg("ethusdt", true),
-        TradeLeg("ethbtc", false)
-    );
+    ArbitragePath path = ArbitragePath::from_string(arbitrage_path);
 
     ServerConfig server_config(
-        0.00001, // profit threshold of 0.1%
-        0.00005, // taker fee of 0.05%
-        0.01 // initial notional amount
+        env_profit_threshold ? std::stod(env_profit_threshold) : 0.0001,
+        env_taker_fee ? std::stod(env_taker_fee) : 0.0005                   
     );
 
     auto client = std::make_shared<BinanceClient>(io_context,ctx);

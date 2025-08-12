@@ -27,6 +27,9 @@ struct OrderBookTick {
     long long processTime; 
 
     double unrealisedPnl; 
+    double tradedNotional; 
+    std::string bottleneckLeg; 
+    bool arbitrageOpportunity;
 
     OrderBookTick(long long u, 
                   std::string s, 
@@ -41,7 +44,10 @@ struct OrderBookTick {
           asks(std::move(a)), 
           tickInitTime(ts), 
           processTime(0),
-          unrealisedPnl(0) {}
+          unrealisedPnl(0),
+          tradedNotional(0),
+          arbitrageOpportunity(false),
+          bottleneckLeg("") {}
 
     OrderBookTick(){}
 

@@ -2,6 +2,7 @@
 #define NOMINMAX    
 
 #include "arbitrage_server.h"
+#include "arbitrage_calculator.h"
 #include <boost/asio/strand.hpp>
 #include <iomanip>
 #include <iostream>
@@ -28,8 +29,6 @@ Server::Server(const ArbitragePath& path,
 
 void Server::on_update(OrderBookTick& update) {
     // std::lock_guard<std::mutex> lock(mutex);
-
-    auto it = pairToPriceMap.find(update.symbol);
     
     pairToPriceMap.insert_or_assign(update.symbol, update);
 
@@ -38,56 +37,52 @@ void Server::on_update(OrderBookTick& update) {
         return; 
     }
 
-    // Scale up minimum expected notional amount for arbitrage
-    double newNotional = config.initialNotional;
+    const StartingNotional& startingNotional = calculateStartingNotional(path,pairToPriceMap);
+    double initialNotional = startingNotional.notional;
+    double newNotional = initialNotional;
 
-    // Loop 3 all three legs of the arbitrage path
-    // see if we can cache the effective rate for each leg, to prevent recomputation
-    // get current time 
-
-    time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-
-
-    for (int i = 0; i < 3; ++i) {
+    for (int i = 0; i < path.legs.size(); ++i) {
         const auto& trade_leg = path.legs[i];
         const auto& leg_tick = pairToPriceMap.find(trade_leg.symbol)->second;
-        double rate = trade_leg.getEffectiveRate(leg_tick,newNotional);
+        double rate = getEffectiveRate(trade_leg, leg_tick, newNotional);
 
-        std::cout << "Update ID: " << leg_tick.updateId
-                  << ", Symbol: " << trade_leg.symbol
-                  << ", Rate VWAP: " << rate << "\n";
+        // std::cout << "Update ID: " << leg_tick.updateId
+        //           << ", Symbol: " << trade_leg.symbol
+        //           << ", Rate VWAP: " << rate << "\n";
 
         if (rate <= 0){
-            return;
+            break;
         }
 
         newNotional = newNotional * rate;
     }
 
-    time_t now_after = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-    std::cout << "Time taken for 3 legs: " << std::difftime(now_after, now) << " seconds\n";
-
     // Subtract taker fees
     newNotional = newNotional * config.takerFee;
 
-    double profit = newNotional - config.initialNotional;
+    double profit = newNotional - initialNotional;
     std::cout << std::fixed << std::setprecision(15) << profit << "\n"; // Example: 15 decimal places
 
-    if (newNotional >= config.thresholdNotional) {
+    // Consider only large enough profits to protect against realtime slippages
+    if (newNotional >= initialNotional * (1 + config.profitThreshold)) {
         std::cout << "Arbitrage opportunity detected!\n";
-        std::cout << "Initial Traded Notional: " << config.initialNotional << "\n";
+        std::cout << "Initial Traded Notional: " << initialNotional << "\n";
         std::cout << "Final Notional after Trades: " << newNotional << "\n";
         std::cout << "Profit: " << profit << "\n";
 
         currentNotional = newNotional;
+        update.arbitrageOpportunity = true; 
     } 
 
-    long long localTimestampMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+    update.processTime = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::system_clock::now().time_since_epoch()
     ).count();
 
-    update.processTime = localTimestampMs - update.tickInitTime;
+    std::cout << "update process time: " << update.processTime - update.tickInitTime << " ms\n";
+
     update.unrealisedPnl = profit; 
+    update.tradedNotional = initialNotional;
+    update.bottleneckLeg = startingNotional.bottleneckLeg;
 
     if (tradeFileWriter){
         tradeFileWriter->write(update);

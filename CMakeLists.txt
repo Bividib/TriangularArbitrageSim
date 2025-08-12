@@ -30,6 +30,7 @@ src/exchange/binance/binance_client.cpp
 src/common/order_book.cpp
 src/file/trade_file_writer.cpp
 src/server/arbitrage_server.cpp
+src/server/arbitrage_calculator.cpp
 )
 
 target_include_directories(Main PRIVATE
@@ -52,11 +53,12 @@ enable_testing() # Crucial: enables CTest infrastructure
 # Define a separate executable for tests
 add_executable(UnitTests 
 test/test.cpp 
-test/test_trade_leg.cpp
+test/test_arbitrage_calculator.cpp
 src/exchange/binance/binance_client.cpp
 src/common/order_book.cpp
 src/file/trade_file_writer.cpp
 src/server/arbitrage_server.cpp
+src/server/arbitrage_calculator.cpp
 )
 
 # Link test executable to Google Test libraries

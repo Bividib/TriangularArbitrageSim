@@ -3,6 +3,7 @@
 
 #include <string>
 #include <iostream> 
+#include <sstream>
 #include <array>
 #include <algorithm> 
 #include "common/order_book.h" 
@@ -13,117 +14,6 @@ struct TradeLeg {
 
     TradeLeg(const std::string& sym, bool flip)
         : symbol(sym), requiresInversion(flip) {}
-
-    static double calculateVwapBid(const std::vector<PriceLevel>& levels, double desired_quantity) {
-        if (desired_quantity <= 0) {
-            return 0.0; 
-        }
-
-        double total_price_x_quantity = 0.0;
-        double total_quantity_filled = 0.0;
-        double remaining_quantity_to_fill = desired_quantity;
-
-        for (const auto& level : levels) {
-            if (remaining_quantity_to_fill <= 0) {
-                break; 
-            }
-
-            double fill_quantity = std::min(level.quantity, remaining_quantity_to_fill);
-
-            total_price_x_quantity += (level.price * fill_quantity);
-            total_quantity_filled += fill_quantity;
-            remaining_quantity_to_fill -= fill_quantity;
-        }
-
-        if (total_quantity_filled < desired_quantity || total_quantity_filled <= 0) {
-            // std::cerr << "Warning: Insufficient liquidity. Desired: " << desired_quantity 
-            //         << ", Filled: " << total_quantity_filled << ". Cannot fulfill trade.\n";
-            return 0.0;
-        }
-
-        return total_price_x_quantity / total_quantity_filled;
-    }
-
-    static double calculateVwapAsk(const std::vector<PriceLevel>& levels, double old_currency) {
-        if (old_currency <= 0.0) {
-            return 0.0;
-        }
-
-        const double EPSILON = std::numeric_limits<double>::epsilon() * old_currency;
-
-        double total_eth_acquired = 0.0;
-        double usdt_spent_actual = 0.0; 
-        double remaining_usdt_to_spend = old_currency;
-
-        for (const auto& level : levels) {
-            double price = level.price;
-            double available_eth_at_level = level.quantity;
-
-
-            double cost_to_buy_all_at_level = price * available_eth_at_level;
-
-            if (remaining_usdt_to_spend >= cost_to_buy_all_at_level) {
-                // Buy all the ETH at this level
-                total_eth_acquired += available_eth_at_level;
-                usdt_spent_actual += cost_to_buy_all_at_level;
-                remaining_usdt_to_spend -= cost_to_buy_all_at_level;
-            } else {
-                // Buy only a portion of ETH with the remaining USDT
-                // This is where the division of (remaining_usdt / price) happens
-                double eth_to_buy_with_remaining_usdt = remaining_usdt_to_spend / price;
-
-                total_eth_acquired += eth_to_buy_with_remaining_usdt;
-                usdt_spent_actual += remaining_usdt_to_spend; // All remaining USDT is spent here
-                remaining_usdt_to_spend = 0.0; // No USDT left
-
-                break; // All funds spent, stop processing further levels
-            }
-
-            // If all old_currency has been spent (or very close to it due to precision), break
-            if (remaining_usdt_to_spend <= EPSILON) {
-                remaining_usdt_to_spend = 0.0; 
-                break;
-            }
-        }
-
-        if (total_eth_acquired > 0.0 && remaining_usdt_to_spend == 0.0) {
-            // The average price is the total USDT spent divided by the total ETH acquired.
-            return usdt_spent_actual / total_eth_acquired;
-        } 
-
-        std::cerr << "Warning: Trade not fully executed due to insufficient ETH liquidity. "
-            << "Desired USDT: " << old_currency
-            << ", Actually spent: " << usdt_spent_actual
-            << ", Remaining USDT: " << remaining_usdt_to_spend << "\n";
-
-        return 0.0;
-    }
-
-    double getEffectiveRate(const OrderBookTick& tick, double current_notional_in_previous_leg_currency) const {
-        if (current_notional_in_previous_leg_currency <= 0 || tick.bids.empty() || tick.asks.empty()) {
-            return 0.0;
-        }
-
-        double rate = 0.0;
-
-        if (requiresInversion) { 
-            double vwap_price_quote_per_base = calculateVwapAsk(tick.asks, current_notional_in_previous_leg_currency);
-            
-            if (vwap_price_quote_per_base > 0) {
-                return 1.0 / vwap_price_quote_per_base;
-            } else {
-                return 0.0;
-            }
-        } else { 
-            double vwap_price_quote_per_base = calculateVwapBid(tick.bids, current_notional_in_previous_leg_currency);
-
-            if (vwap_price_quote_per_base > 0) {
-                return vwap_price_quote_per_base;
-            } else {
-                return 0.0;
-            }
-        }
-    }
 };
 
 struct ArbitragePath {
@@ -134,9 +24,66 @@ struct ArbitragePath {
                   const TradeLeg& leg1,
                   const TradeLeg& leg2,
                   const TradeLeg& leg3)
-        : startCurrency(startCur),
+        : startCurrency(std::move(startCur)),
           legs{leg1, leg2, leg3} 
     {}
+
+    ArbitragePath(std::string startCur, const std::vector<TradeLeg>& trade_legs)
+        : startCurrency(std::move(startCur)),
+          legs{{trade_legs[0],trade_legs[1],trade_legs[2]}}
+    {}
+
+    const TradeLeg& getFirstLeg() const { return legs[0]; }
+    const TradeLeg& getSecondLeg() const { return legs[1]; }
+    const TradeLeg& getThirdLeg() const { return legs[2]; }
+
+    /**
+     * Parses a string representation of an arbitrage path, there must only be 3 legs
+     * 
+     * An example valid String:
+     * btc:btcusdt:BUY,ethusdt:SELL,ethbtc:BUY
+     * 
+     * First Value is the starting currency 
+     * The next 3 values are the trade legs representing the currency pair and the buy/sell direction
+     */
+    static ArbitragePath from_string(const std::string& str) {
+        size_t first_colon = str.find(':');
+        if (first_colon == std::string::npos) {
+            throw std::invalid_argument("Invalid format: missing base asset delimiter ':'");
+        }
+
+        std::string base = str.substr(0, first_colon);
+        std::string legs_str = str.substr(first_colon + 1);
+
+        std::vector<TradeLeg> parsed_legs;
+        std::stringstream ss(legs_str);
+        std::string leg_segment;
+
+        while (std::getline(ss, leg_segment, ',')) {
+            if (leg_segment.empty()) continue;
+
+            size_t last_colon = leg_segment.rfind(':');
+            if (last_colon == std::string::npos || last_colon == 0) {
+                throw std::invalid_argument("Invalid leg format: " + leg_segment);
+            }
+
+            std::string symbol = leg_segment.substr(0, last_colon);
+            std::string action = leg_segment.substr(last_colon + 1);
+
+            bool is_sell;
+            if (action == "SELL") {
+                is_sell = true;
+            } else if (action == "BUY") {
+                is_sell = false;
+            } else {
+                throw std::invalid_argument("Invalid action in leg: " + action);
+            }
+
+            parsed_legs.emplace_back(symbol, is_sell);
+        }
+
+        return ArbitragePath(base, parsed_legs);
+    }
 };
 
 #endif // TRADE_LEG_H

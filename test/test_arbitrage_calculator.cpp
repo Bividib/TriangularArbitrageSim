@@ -1,5 +1,6 @@
 #include "gtest/gtest.h"
 #include "common/trade_leg.h"
+#include "server/arbitrage_calculator.h"
 #include <memory> 
 
 class TradeLegTest : public ::testing::Test {
@@ -50,14 +51,14 @@ protected:
 //start with 1179.9228 USDT and convert to ETH 
 TEST_F(TradeLegTest, CalculateVwapAskFirstLevel) {
     TradeLeg leg("ethusdt", true);
-    double rate = leg.calculateVwapAsk(ethusdt_tick->asks, 1179.9228);
+    double rate = calculateVwapAsk(ethusdt_tick->asks, 1179.9228);
     EXPECT_DOUBLE_EQ(rate, 3742.12); 
 }
 
 //start with (125.1815 * 3742.12) + 100 (468544.19478) USDT
 TEST_F(TradeLegTest, CalculateVwapAskSecondLevel) {
     TradeLeg leg("ethusdt", true);
-    double rate = leg.calculateVwapAsk(ethusdt_tick->asks, 468544.19478);
+    double rate = calculateVwapAsk(ethusdt_tick->asks, 468544.19478);
 
     double eth_from_second_level = 100 / 3742.13;
     EXPECT_DOUBLE_EQ(rate, 468544.19478 / (125.1815 + eth_from_second_level)); 
@@ -72,92 +73,92 @@ TEST_F(TradeLegTest, CalculateVwapAskMaxLiquidity) {
         usdt_to_spend += level.price * level.quantity;
         eth_available += level.quantity;
     }
-    double rate = leg.calculateVwapAsk(ethusdt_tick->asks, usdt_to_spend);
-    EXPECT_DOUBLE_EQ(rate, usdt_to_spend / eth_available); 
+    double rate = calculateVwapAsk(ethusdt_tick->asks, usdt_to_spend);
+    EXPECT_DOUBLE_EQ(rate, usdt_to_spend / eth_available);
 }
 
 //start with USDT that will buy all ETH exactly, but only at the first level
 TEST_F(TradeLegTest, TradeLegTest_CalculateVwapAskExactLiquidityFirstLevel){
     TradeLeg leg("ethusdt", true);
-    double rate = leg.calculateVwapAsk(ethusdt_tick->asks, 125.1815 * 3742.12);
+    double rate = calculateVwapAsk(ethusdt_tick->asks, 125.1815 * 3742.12);
     EXPECT_DOUBLE_EQ(rate, 3742.12); 
 }
 
 //start with an absurd amount of USDT that cannot buy any ETH
 TEST_F(TradeLegTest, CalculateVwapAskNoLiquidity) {
     TradeLeg leg("ethusdt", true);
-    double rate = leg.calculateVwapAsk(ethusdt_tick->asks, 100000000);
+    double rate = calculateVwapAsk(ethusdt_tick->asks, 100000000);
     EXPECT_DOUBLE_EQ(rate, 0);
 }
 
 TEST_F(TradeLegTest, GetEffectiveRateAsk) {
     TradeLeg leg("ethusdt", true);
-    double rate = leg.getEffectiveRate(*ethusdt_tick, 1179.9228);
+    double rate = getEffectiveRate(leg, *ethusdt_tick, 1179.9228);
     EXPECT_DOUBLE_EQ(rate, 1/3742.12); 
 }
 
 TEST_F(TradeLegTest, CalculateVwapExactLiquidityBid) {
     TradeLeg leg("btcusdt", false);
-    double vwap = leg.calculateVwapBid(tick->bids, 1.5);
+    double vwap = calculateVwapBid(tick->bids, 1.5);
     EXPECT_DOUBLE_EQ(vwap, 99.0);
 }
 
 TEST_F(TradeLegTest, CalculateVwapPartialLiquidityWithinFirstLevelBid) {
     TradeLeg leg("btcusdt", false);
-    double vwap = leg.calculateVwapBid(tick->bids, 1.0); 
+    double vwap = calculateVwapBid(tick->bids, 1.0); 
     EXPECT_DOUBLE_EQ(vwap, 99.0);
 }
 
 TEST_F(TradeLegTest, CalculateVwapPartialLiquidityWithinSecondLevelBid) {
     TradeLeg leg("btcusdt", false);
-    double vwap = leg.calculateVwapBid(tick->bids, 2.0); 
+    double vwap = calculateVwapBid(tick->bids, 2.0); 
     EXPECT_DOUBLE_EQ(vwap, 98.75);
 }
 
 TEST_F(TradeLegTest, CalculateVwapMaxLiquidityBid) {
     TradeLeg leg("btcusdt", false);
-    double vwap = leg.calculateVwapBid(tick->bids, 7.5); 
+    double vwap = calculateVwapBid(tick->bids, 7.5); 
     EXPECT_NEAR(vwap, (99.0 * 1.5 + 98.0 * 2.5 + 97.0 * 3.5) / 7.5, 1e-9);
 }
 
 TEST_F(TradeLegTest, CalculateVwapInsufficientLiquidityBid) {
     TradeLeg leg("btcusdt", false);
-    double vwap = leg.calculateVwapBid(tick->bids, 10.0); 
+    double vwap = calculateVwapBid(tick->bids, 10.0); 
     EXPECT_DOUBLE_EQ(vwap, 0.0); 
 }
 
 TEST_F(TradeLegTest, CalculateVwapZeroQuantity) {
     TradeLeg leg("btcusdt", false);
-    double vwap = leg.calculateVwapAsk(tick->bids, 0.0);
+    double vwap = calculateVwapAsk(tick->bids, 0.0);
     EXPECT_DOUBLE_EQ(vwap, 0.0); 
 }
 
 TEST_F(TradeLegTest, CalculateVwapNegativeQuantity) {
     TradeLeg leg("btcusdt", false);
-    double vwap = leg.calculateVwapAsk(tick->bids, -5.0);
+    double vwap = calculateVwapAsk(tick->bids, -5.0);
     EXPECT_DOUBLE_EQ(vwap, 0.0); 
 }
 
 TEST_F(TradeLegTest, GetEffectiveRateBid) {
     TradeLeg leg("btcusdt", false);
-    double rate = leg.getEffectiveRate(*tick, 1.0);
+    double rate = getEffectiveRate(leg,*tick, 1.0);
     EXPECT_DOUBLE_EQ(rate, 99.0);
 }
 
 TEST_F(TradeLegTest, GetEffectiveRateWithinSecondLevelBid) {
     TradeLeg leg("btcusdt", false);
-    double rate = leg.getEffectiveRate(*tick, 2.0);
+    double rate = getEffectiveRate(leg,*tick, 2.0);
     EXPECT_DOUBLE_EQ(rate, 98.75);
 }
 
 TEST_F(TradeLegTest, GetEffectiveRateZeroTradeSize) {
     TradeLeg leg("btcusdt", false);
-    double rate = leg.getEffectiveRate(*tick, 0.0);
+    double rate = getEffectiveRate(leg,*tick, 0.0);
     EXPECT_DOUBLE_EQ(rate, 0.0);
 }
 
 TEST_F(TradeLegTest, GetEffectiveRateNegativeTradeSize) {
     TradeLeg leg("btcusdt", false);
-    double rate = leg.getEffectiveRate(*tick, -1.0);
+    double rate = getEffectiveRate(leg,*tick, -1.0);
     EXPECT_DOUBLE_EQ(rate, 0.0);
 }
