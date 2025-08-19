@@ -61,24 +61,24 @@ void Server::on_update(OrderBookTick& update) {
     newNotional = newNotional * config.takerFee;
 
     double profit = newNotional - initialNotional;
-    std::cout << std::fixed << std::setprecision(15) << profit << "\n"; // Example: 15 decimal places
+    // std::cout << std::fixed << std::setprecision(15) << profit << "\n"; // Example: 15 decimal places
 
     // Consider only large enough profits to protect against realtime slippages
     if (newNotional >= initialNotional * (1 + config.profitThreshold)) {
-        std::cout << "Arbitrage opportunity detected!\n";
-        std::cout << "Initial Traded Notional: " << initialNotional << "\n";
-        std::cout << "Final Notional after Trades: " << newNotional << "\n";
-        std::cout << "Profit: " << profit << "\n";
+        // std::cout << "Arbitrage opportunity detected!\n";
+        // std::cout << "Initial Traded Notional: " << initialNotional << "\n";
+        // std::cout << "Final Notional after Trades: " << newNotional << "\n";
+        // std::cout << "Profit: " << profit << "\n";
 
         currentNotional = newNotional;
         update.arbitrageOpportunity = true; 
     } 
 
-    update.processTime = std::chrono::duration_cast<std::chrono::milliseconds>(
+    update.processTime = std::chrono::duration_cast<std::chrono::nanoseconds>(
         std::chrono::system_clock::now().time_since_epoch()
     ).count();
 
-    std::cout << "update process time: " << update.processTime - update.tickInitTime << " ms\n";
+    // std::cout << "update process time: " << update.processTime - update.tickInitTime << " ms\n";
 
     update.unrealisedPnl = profit; 
     update.tradedNotional = initialNotional;
