@@ -18,6 +18,7 @@
 # Optional environment variables for the C++ application (overridden if passed):
 #   - BINANCE_PROFIT_THRESHOLD
 #   - BINANCE_TAKER_FEE
+#   - BINANCE_MAX_STARTING_NOTIONAL_FRACTION
 # ==============================================================================
 
 # --- Argument Parsing ---

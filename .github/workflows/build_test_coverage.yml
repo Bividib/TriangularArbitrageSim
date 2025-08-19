@@ -111,7 +111,7 @@ jobs:
     needs: build-test-coverage
     runs-on: ubuntu-latest
     # Only run this job for pushes to the main/master branch, not for pull requests
-    # iif: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
 
     steps:
       - name: Checkout code
