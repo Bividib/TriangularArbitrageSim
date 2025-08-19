@@ -34,7 +34,7 @@ private:
     static std::vector<PriceLevel> parsePriceLevels(const nlohmann::json& json_array);
 
     // Binance-specific implementation details
-    OrderBookTick to_struct(const nlohmann::json& json_data, const std::string& json_string);
+    OrderBookTick to_struct(const nlohmann::json& json_data, const std::string& json_string, long long localTimestampNs);
     boost::asio::ip::tcp::resolver resolver;
     static const std::string WS_CLIENT_HEADER;
 };

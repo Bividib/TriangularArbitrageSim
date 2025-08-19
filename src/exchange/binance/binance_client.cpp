@@ -122,11 +122,15 @@ void BinanceClient::on_read(boost::beast::error_code ec, std::size_t bytes_trans
     }
     if (ec) return fail(ec, "read");
 
+    long long localTimestampNs = std::chrono::duration_cast<std::chrono::nanoseconds>(
+        std::chrono::system_clock::now().time_since_epoch()
+    ).count();
+
     // Process the message
     const std::string& json_string = boost::beast::buffers_to_string(buffer.data());
     // std::cout << "Received: " << json_string << std::endl;
     auto data = nlohmann::json::parse(json_string);
-    auto tick_struct = to_struct(data,json_string);
+    auto tick_struct = to_struct(data,json_string,localTimestampNs);
     
     callback->on_update(tick_struct);
     
@@ -160,7 +164,7 @@ std::vector<PriceLevel> BinanceClient::parsePriceLevels(const nlohmann::json& js
     return levels_vec;
 }
 
-OrderBookTick BinanceClient::to_struct(const nlohmann::json& json_data, const std::string& json_string) {
+OrderBookTick BinanceClient::to_struct(const nlohmann::json& json_data, const std::string& json_string, long long localTimestampNs) {
     try {
         const auto& data = json_data.at("data");
         const long long updateId = data.at("lastUpdateId").get<long long>(); 
@@ -171,11 +175,7 @@ OrderBookTick BinanceClient::to_struct(const nlohmann::json& json_data, const st
         std::vector<PriceLevel> bids_vec = parsePriceLevels(data.at("bids"));
         std::vector<PriceLevel> asks_vec = parsePriceLevels(data.at("asks"));
 
-        long long localTimestampMs = std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::system_clock::now().time_since_epoch()
-        ).count();
-
-        return OrderBookTick(updateId, symbol,json_string, std::move(bids_vec), std::move(asks_vec), localTimestampMs);
+        return OrderBookTick(updateId, symbol,json_string, std::move(bids_vec), std::move(asks_vec), localTimestampNs);
 
     } catch (const nlohmann::json::exception& e) {
         std::cerr << "JSON parsing error in BinanceClient::to_struct: " << e.what() << "\n";
