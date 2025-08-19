@@ -110,7 +110,9 @@ double calculateVwapBid(const std::vector<PriceLevel>& levels, double desired_qu
         remaining_quantity_to_fill -= fill_quantity;
     }
 
-    if (total_quantity_filled < desired_quantity || total_quantity_filled <= 0) {
+    const double EPSILON = std::numeric_limits<double>::epsilon() * desired_quantity;
+
+    if ((desired_quantity - total_quantity_filled) > EPSILON || total_quantity_filled <= 0) {
         // std::cerr << "Warning: Insufficient liquidity. Desired: " << desired_quantity 
         //         << ", Filled: " << total_quantity_filled << ". Cannot fulfill trade.\n";
         return 0.0;
@@ -161,15 +163,15 @@ double calculateVwapAsk(const std::vector<PriceLevel>& levels, double old_curren
         }
     }
 
-    if (total_eth_acquired > 0.0 && remaining_usdt_to_spend == 0.0) {
+    if (total_eth_acquired > 0.0 && remaining_usdt_to_spend <= EPSILON) {
         // The average price is the total USDT spent divided by the total ETH acquired.
         return usdt_spent_actual / total_eth_acquired;
     } 
 
-    // std::cerr << "Warning: Trade not fully executed due to insufficient ETH liquidity. "
-    //     << "Desired USDT: " << old_currency
+    // std::cerr << "Warning: Trade not fully executed due to insufficient liquidity. "
+    //     << "Desired : " << old_currency
     //     << ", Actually spent: " << usdt_spent_actual
-    //     << ", Remaining USDT: " << remaining_usdt_to_spend << "\n";
+    //     << ", Remaining : " << remaining_usdt_to_spend << "\n";
 
     return 0.0;
 }

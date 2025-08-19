@@ -35,7 +35,7 @@ int main() {
     ServerConfig server_config(
         env_profit_threshold ? std::stod(env_profit_threshold) : 0.0001,
         env_taker_fee ? std::stod(env_taker_fee) : 0.0005,
-        env_max_starting_notional_fraction ? std::stod(env_max_starting_notional_fraction) : 1.0
+        env_max_starting_notional_fraction ? std::stod(env_max_starting_notional_fraction) : 0.8
     );
 
     auto client = std::make_shared<BinanceClient>(io_context,ctx);
