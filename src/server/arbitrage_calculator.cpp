@@ -41,9 +41,7 @@ StartingNotional calculateStartingNotional(const ArbitragePath& path,
     const auto& tick2 = pairToPriceMap.at(leg2.symbol);
     const auto& levels2 = leg2.requiresInversion ? tick2.asks : tick2.bids;
 
-    // The intermediate value of leg 2 is always price * quantity
     const double secondLegValueIntermediate = calculateBookSideValue(levels2, !leg2.requiresInversion);
-
     const double effectivePriceLeg1 = totalQuoteValueLeg1 / totalBaseQuantityLeg1;
 
     // BTCUSDT USDT/BTC Leg1-Bid
@@ -71,11 +69,7 @@ StartingNotional calculateStartingNotional(const ArbitragePath& path,
     //     If Leg1 is Bid then divide by Leg1's Rate
     //     Otherwise Leg1 is Ask so multiply by Leg1's Rate
 
-    if (leg2.requiresInversion) {
-        secondLegValue = secondLegValueIntermediate * effectivePriceLeg1;
-    } else {
-        secondLegValue = secondLegValueIntermediate / effectivePriceLeg1;
-    }
+    secondLegValue = leg2.requiresInversion ? secondLegValueIntermediate * effectivePriceLeg1 : secondLegValueIntermediate / effectivePriceLeg1;
 
     const StartingNotional leg2StartingNotional = {secondLegValue, leg2.symbol};
 

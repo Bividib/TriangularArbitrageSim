@@ -38,7 +38,7 @@ void Server::on_update(OrderBookTick& update) {
     }
 
     const StartingNotional& startingNotional = calculateStartingNotional(path,pairToPriceMap);
-    double initialNotional = startingNotional.notional;
+    double initialNotional = startingNotional.notional * config.maxStartingNotionalFraction;
     double newNotional = initialNotional;
 
     for (int i = 0; i < path.legs.size(); ++i) {

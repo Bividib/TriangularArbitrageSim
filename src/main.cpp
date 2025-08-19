@@ -15,6 +15,7 @@ int main() {
     const char* env_arbitrage_path = std::getenv("BINANCE_ARBITRAGE_PATH");
     const char* env_profit_threshold = std::getenv("BINANCE_PROFIT_THRESHOLD");
     const char* env_taker_fee = std::getenv("BINANCE_TAKER_FEE");
+    const char* env_max_starting_notional_fraction = std::getenv("BINANCE_MAX_STARTING_NOTIONAL_FRACTION");
 
     const std::string host = "stream.binance.com";
     const std::string port = "9443";
@@ -33,7 +34,8 @@ int main() {
 
     ServerConfig server_config(
         env_profit_threshold ? std::stod(env_profit_threshold) : 0.0001,
-        env_taker_fee ? std::stod(env_taker_fee) : 0.0005                   
+        env_taker_fee ? std::stod(env_taker_fee) : 0.0005,
+        env_max_starting_notional_fraction ? std::stod(env_max_starting_notional_fraction) : 1.0
     );
 
     auto client = std::make_shared<BinanceClient>(io_context,ctx);

@@ -12,10 +12,11 @@
 struct ServerConfig {
     double profitThreshold;
     double takerFee;
+    double maxStartingNotionalFraction;
 
     // Constructor to easily initialize config
-    ServerConfig(double profitThresh, double fee)
-        : profitThreshold(profitThresh), takerFee(std::pow(1 - fee, 3)) {}
+    ServerConfig(double profitThresh, double fee, double maxNotionalFraction)
+        : profitThreshold(profitThresh), takerFee(std::pow(1 - fee, 3)), maxStartingNotionalFraction(maxNotionalFraction) {}
 };
 
 class Server : public std::enable_shared_from_this<Server> {
