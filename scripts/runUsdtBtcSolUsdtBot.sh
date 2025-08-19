@@ -1,2 +1,2 @@
 #!/bin/bash
-./run_arbitrage_bot.sh "usdt_btc_sol_bot" "UsdtBtcSolUsdt" "usdt:btcusdt:SELL,solbtc:SELL,solusdt:BUY" "/stream?streams=btcusdt@depth5@1000ms/solbtc@depth5@1000ms/solusdt@depth5@1000ms"
+./run_triangular_arbitrage_bot.sh "usdt_btc_sol_bot" "UsdtBtcSolUsdt" "usdt:btcusdt:SELL,solbtc:SELL,solusdt:BUY" "/stream?streams=btcusdt@depth5@100ms/solbtc@depth5@100ms/solusdt@depth5@100ms"
