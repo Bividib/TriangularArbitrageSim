@@ -44,42 +44,21 @@ StartingNotional calculateStartingNotional(const ArbitragePath& path,
     const double secondLegValueIntermediate = calculateBookSideValue(levels2, !leg2.requiresInversion);
     const double effectivePriceLeg1 = totalQuoteValueLeg1 / totalBaseQuantityLeg1;
 
-    // BTCUSDT USDT/BTC Leg1-Bid
-    // ETHUSDT USDT     Leg2-Ask
-    // Need to recognise to divide here 
-
-    // BTCUSDT USDT/BTC  Leg1-Bid
-    // USDTETH USDT      Leg2-Bid
-    // Need to recognise to divide here
-
-    // BTCUSDT USDT/BTC Leg1-Ask
-    // LTCBTC  BTC      Leg2-Ask
-    // Need to recognise to multiply here
-
-    // BTCUSDT USDT/BTC Leg1-Ask
-    // BTCLTC  BTC      Leg2-Bid
-    // Need to recognise to multiply here
-
-    // General algorithm for valuing Leg2 
-    // If Leg2 requires inversion (Ask) then calculate sum of Ask quantity * price
-    //     If Leg1 is Bid then divide by Leg1's Rate
-    //     Otherwise Leg1 is Ask so multiply by Leg1's Rate
-    // 
-    // Otherwise Leg2 doesn't need inversion (Bid) then calculate sum of Bid quantities only
-    //     If Leg1 is Bid then divide by Leg1's Rate
-    //     Otherwise Leg1 is Ask so multiply by Leg1's Rate
-
-    secondLegValue = leg2.requiresInversion ? secondLegValueIntermediate * effectivePriceLeg1 : secondLegValueIntermediate / effectivePriceLeg1;
+    secondLegValue = leg1.requiresInversion ? secondLegValueIntermediate * effectivePriceLeg1 : secondLegValueIntermediate / effectivePriceLeg1;
 
     const StartingNotional leg2StartingNotional = {secondLegValue, leg2.symbol};
 
-    // --- Leg 3: Opposite to Leg1's Calculation ---
+    // --- Leg 3: Opposite to Leg1's Calculation --- 
     const auto& leg3 = path.getThirdLeg();
     const auto& tick3 = pairToPriceMap.at(leg3.symbol);
     const auto& levels3 = leg3.requiresInversion ? tick3.asks : tick3.bids;
     const double thirdLegValue = calculateBookSideValue(levels3, leg3.requiresInversion);
 
     const StartingNotional leg3StartingNotional = {thirdLegValue, leg3.symbol};
+
+    // std::cout << "leg1 starting notional is " << leg1StartingNotional.notional << "\n";
+    // std::cout << "leg2 starting notional is " << leg2StartingNotional.notional << "\n";
+    // std::cout << "leg3 starting notional is " << leg3StartingNotional.notional << "\n";
 
     return std::min({leg1StartingNotional, leg2StartingNotional, leg3StartingNotional});
 }

@@ -48,6 +48,73 @@ protected:
     }
 };
 
+/*
+* Test fixture for StartingNotional calculations
+*/
+class StartingNotionalTest : public ::testing::Test {
+protected:
+    ArbitragePath path = ArbitragePath::from_string("btc:btcusdt:BUY,ethusdt:SELL,ethbtc:BUY");
+    std::unordered_map<std::string, OrderBookTick> pairToPriceMap;
+
+    void SetUp() override {
+        // create btc usdt tick based on the example JSON above 
+
+        OrderBookTick btcusdt_tick;
+        btcusdt_tick.bids = {
+            PriceLevel(117992.29000000, 5.61816000),
+            PriceLevel(117992.30000000, 0.00433000),
+            PriceLevel(117992.36000000, 0.00010000),
+            PriceLevel(117992.37000000, 0.05095000),
+            PriceLevel(117992.43000000, 0.00010000)
+        };
+        btcusdt_tick.asks = {
+            PriceLevel(117992.44000000, 0.00010000),
+            PriceLevel(117992.45000000, 0.05095000),
+            PriceLevel(117992.46000000, 0.00010000),
+            PriceLevel(117992.47000000, 0.00433000),
+            PriceLevel(117992.48000000, 5.61816000)
+        };
+
+        OrderBookTick ethusdt_tick;
+        ethusdt_tick.bids = {
+            PriceLevel(3742.11000000, 55.38490000),
+            PriceLevel(3742.10000000, 0.00150000),
+            PriceLevel(3742.09000000, 0.00150000),
+            PriceLevel(3742.08000000, 0.00150000),
+            PriceLevel(3742.07000000, 0.00150000)
+        };
+        ethusdt_tick.asks = {
+            PriceLevel(3742.12000000, 125.18150000),
+            PriceLevel(3742.13000000, 0.31180000),
+            PriceLevel(3742.14000000, 0.00300000),
+            PriceLevel(3742.15000000, 0.55140000),
+            PriceLevel(3742.16000000, 0.00150000)
+        };
+
+        OrderBookTick ethbtc_tick;
+        ethbtc_tick.bids = {
+            PriceLevel(0.03171000, 23.57890000),
+            PriceLevel(0.03170000, 58.66880000),
+            PriceLevel(0.03169000, 42.05050000),
+            PriceLevel(0.03168000, 52.23000000),
+            PriceLevel(0.03167000, 58.83160000)
+        };
+        ethbtc_tick.asks = {
+            PriceLevel(0.03172000, 15.37580000),
+            PriceLevel(0.03173000, 29.79230000),
+            PriceLevel(0.03174000, 55.22210000),
+            PriceLevel(0.03175000, 40.73120000),
+            PriceLevel(0.03176000, 54.27910000)
+        };
+
+        pairToPriceMap = {
+            {"btcusdt", btcusdt_tick},
+            {"ethusdt", ethusdt_tick},
+            {"ethbtc", ethbtc_tick}
+        };
+    }
+};
+
 //start with 1179.9228 USDT and convert to ETH 
 TEST_F(TradeLegTest, CalculateVwapAskFirstLevel) {
     TradeLeg leg("ethusdt", true);
@@ -161,4 +228,13 @@ TEST_F(TradeLegTest, GetEffectiveRateNegativeTradeSize) {
     TradeLeg leg("btcusdt", false);
     double rate = getEffectiveRate(leg,*tick, -1.0);
     EXPECT_DOUBLE_EQ(rate, 0.0);
+}
+
+TEST_F(StartingNotionalTest, CalculateStartingNotional) {
+    StartingNotional expected = {3.9976446695521055, "ethusdt"};
+    StartingNotional actual = calculateStartingNotional(path,pairToPriceMap);
+    
+    EXPECT_DOUBLE_EQ(actual.notional, expected.notional);
+    EXPECT_EQ(actual.bottleneckLeg, expected.bottleneckLeg);
+
 }

@@ -51,7 +51,7 @@ void Server::on_update(OrderBookTick& update) {
         //           << ", Rate VWAP: " << rate << "\n";
 
         if (rate <= 0){
-            break;
+            return; 
         }
 
         newNotional = newNotional * rate;
