@@ -2,6 +2,8 @@
 
 #include <string>
 #include <fstream>
+#include <nlohmann/json.hpp>
+
 #include "common/order_book.h"
 
 class TradeFileWriter {
