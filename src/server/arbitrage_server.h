@@ -4,6 +4,7 @@
 #include "common/order_book.h"
 #include "common/trade_leg.h"
 #include "file/trade_file_writer.h"
+#include "arbitrage_calculator.h"
 #include <memory>
 #include <set>
 #include <boost/asio/io_context.hpp>

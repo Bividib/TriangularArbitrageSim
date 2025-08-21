@@ -2,7 +2,6 @@
 #define NOMINMAX    
 
 #include "arbitrage_server.h"
-#include "arbitrage_calculator.h"
 #include <boost/asio/strand.hpp>
 #include <iomanip>
 #include <iostream>
@@ -81,7 +80,7 @@ void Server::on_update(OrderBookTick& update) {
         std::chrono::system_clock::now().time_since_epoch()
     ).count();
 
-    std::cout << std::fixed << std::setprecision(10) << "nanoseconds taken " << update.processTime - update.tickInitTime << "\n";
+    // std::cout << std::fixed << std::setprecision(10) << "nanoseconds taken " << update.processTime - update.tickInitTime << "\n";
 
     update.unrealisedPnl = profit; 
     update.tradedNotional = initialNotional;
