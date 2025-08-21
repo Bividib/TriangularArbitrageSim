@@ -13,6 +13,7 @@ Server::Server(const ArbitragePath& path,
                : lastUpdateId(0), 
                path(path),
                currentNotional(0),
+               ticksRemainingBeforeRecalc(0),
                config(config),
                tradeFileWriter(nullptr) {
 }
@@ -23,6 +24,7 @@ Server::Server(const ArbitragePath& path,
                : lastUpdateId(0), 
                path(path),
                currentNotional(0),
+               ticksRemainingBeforeRecalc(0),
                config(config),
                tradeFileWriter(std::move(writer)) {
 }
@@ -37,7 +39,8 @@ void Server::on_update(OrderBookTick& update) {
         return; 
     }
 
-    const StartingNotional& startingNotional = calculateStartingNotional(path,pairToPriceMap);
+    recalcStartingNotional();
+
     double initialNotional = startingNotional.notional * config.maxStartingNotionalFraction;
     double newNotional = initialNotional;
 
@@ -64,7 +67,7 @@ void Server::on_update(OrderBookTick& update) {
     // std::cout << std::fixed << std::setprecision(15) << profit << "\n"; // Example: 15 decimal places
 
     // Consider only large enough profits to protect against realtime slippages
-    if (newNotional >= initialNotional * (1 + config.profitThreshold)) {
+    if (newNotional >= initialNotional * config.profitThreshold) {
         // std::cout << "Arbitrage opportunity detected!\n";
         // std::cout << "Initial Traded Notional: " << initialNotional << "\n";
         // std::cout << "Final Notional after Trades: " << newNotional << "\n";
@@ -78,7 +81,7 @@ void Server::on_update(OrderBookTick& update) {
         std::chrono::system_clock::now().time_since_epoch()
     ).count();
 
-    // std::cout << "update process time: " << update.processTime - update.tickInitTime << " ms\n";
+    std::cout << std::fixed << std::setprecision(10) << "nanoseconds taken " << update.processTime - update.tickInitTime << "\n";
 
     update.unrealisedPnl = profit; 
     update.tradedNotional = initialNotional;
@@ -86,5 +89,15 @@ void Server::on_update(OrderBookTick& update) {
 
     if (tradeFileWriter){
         tradeFileWriter->write(update);
+    }
+}
+
+void Server::recalcStartingNotional() {
+    if (ticksRemainingBeforeRecalc == 0) {
+        ticksRemainingBeforeRecalc = config.maxStartingNotionalRecalcInterval;
+        startingNotional = calculateStartingNotional(path,pairToPriceMap);
+    } else {
+        ticksRemainingBeforeRecalc--;
+        startingNotional = startingNotional;
     }
 }

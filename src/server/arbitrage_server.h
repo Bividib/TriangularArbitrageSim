@@ -13,10 +13,11 @@ struct ServerConfig {
     double profitThreshold;
     double takerFee;
     double maxStartingNotionalFraction;
+    double maxStartingNotionalRecalcInterval;
 
     // Constructor to easily initialize config
-    ServerConfig(double profitThresh, double fee, double maxNotionalFraction)
-        : profitThreshold(profitThresh), takerFee(std::pow(1 - fee, 3)), maxStartingNotionalFraction(maxNotionalFraction) {}
+    ServerConfig(double profitThresh, double fee, double maxNotionalFraction, double maxNotionalRecalcInterval)
+        : profitThreshold(profitThresh+1), takerFee(std::pow(1 - fee, 3)), maxStartingNotionalFraction(maxNotionalFraction), maxStartingNotionalRecalcInterval(maxNotionalRecalcInterval) {}
 };
 
 class Server : public std::enable_shared_from_this<Server> {
@@ -35,11 +36,15 @@ public:
 private:
     std::mutex mutex;
     double currentNotional;
+    double ticksRemainingBeforeRecalc;
+    StartingNotional startingNotional;
     long long lastUpdateId; 
     const ArbitragePath path;
     const ServerConfig config;
     const std::unique_ptr<TradeFileWriter> tradeFileWriter;
     std::unordered_map<std::string, OrderBookTick> pairToPriceMap; 
+
+    void recalcStartingNotional();
 
 };
 

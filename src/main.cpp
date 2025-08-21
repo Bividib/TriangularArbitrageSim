@@ -16,6 +16,7 @@ int main() {
     const char* env_profit_threshold = std::getenv("BINANCE_PROFIT_THRESHOLD");
     const char* env_taker_fee = std::getenv("BINANCE_TAKER_FEE");
     const char* env_max_starting_notional_fraction = std::getenv("BINANCE_MAX_STARTING_NOTIONAL_FRACTION");
+    const char* env_max_starting_notional_recalc_interval = std::getenv("BINANCE_MAX_STARTING_NOTIONAL_RECALC_INTERVAL");
 
     const std::string host = "stream.binance.com";
     const std::string port = "9443";
@@ -35,7 +36,8 @@ int main() {
     ServerConfig server_config(
         env_profit_threshold ? std::stod(env_profit_threshold) : 0.0001,
         env_taker_fee ? std::stod(env_taker_fee) : 0.0005,
-        env_max_starting_notional_fraction ? std::stod(env_max_starting_notional_fraction) : 0.8
+        env_max_starting_notional_fraction ? std::stod(env_max_starting_notional_fraction) : 0.8,
+        env_max_starting_notional_recalc_interval ? std::stod(env_max_starting_notional_recalc_interval) : 60.0
     );
 
     auto client = std::make_shared<BinanceClient>(io_context,ctx);
@@ -47,6 +49,17 @@ int main() {
         auto server = std::make_shared<Server>(path, server_config, std::make_unique<TradeFileWriter>(trade_write_file_path));
         client->set_callback(server);
     }
+
+    std::cout << "Starting Triangular Arbitrage Bot" << "\n"
+              << "########## CONFIGURATION ##########" << "\n"
+              << "Writing results to: " << trade_write_file_path << "\n"
+              << "Websocket Stream Target: " << target << "\n"
+              << "Arbitrage Path to Search: " << arbitrage_path << "\n"
+              << "Profit Threshold: " << server_config.profitThreshold << "\n"
+              << "Taker Fee: " << server_config.takerFee << "\n"
+              << "Max Starting Notional Fraction: " << server_config.maxStartingNotionalFraction << "\n"
+              << "Max Starting Notional Recalc Interval: " << server_config.maxStartingNotionalRecalcInterval << "\n"
+              << "####################################" << "\n";
 
     client->async_connect(host, port, target);
 
