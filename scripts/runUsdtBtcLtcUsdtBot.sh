@@ -1,0 +1,2 @@
+#!/bin/bash
+./run_triangular_arbitrage_bot.sh "usdt_btc_ltc_bot" "UsdtBtcLtcUsdt" "usdt:btcusdt:SELL,ltcbtc:SELL,ltcusdt:BUY" "/stream?streams=btcusdt@depth20@100ms/ltcbtc@depth20@100ms/ltcusdt@depth20@100ms"
