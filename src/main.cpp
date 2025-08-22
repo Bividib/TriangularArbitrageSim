@@ -17,13 +17,14 @@ int main() {
     const char* env_taker_fee = std::getenv("BINANCE_TAKER_FEE");
     const char* env_max_starting_notional_fraction = std::getenv("BINANCE_MAX_STARTING_NOTIONAL_FRACTION");
     const char* env_max_starting_notional_recalc_interval = std::getenv("BINANCE_MAX_STARTING_NOTIONAL_RECALC_INTERVAL");
+    const char* env_use_first_level_only = std::getenv("BINANCE_USE_FIRST_LEVEL_ONLY");
 
     const std::string host = "stream.binance.com";
     const std::string port = "9443";
 
     const std::string trade_write_file_path = env_path ? env_path : "";
-    const std::string target = env_target ? env_target : "/stream?streams=btcusdt@depth5@100ms/ethbtc@depth5@100ms/ethusdt@depth5@100ms";
-    const std::string arbitrage_path = env_arbitrage_path ? env_arbitrage_path : "btc:btcusdt:BUY,ethusdt:SELL,ethbtc:BUY";
+    const std::string target = env_target ? env_target : "/stream?streams=btcusdt@depth1@100ms/ltcbtc@depth1@100ms/ltcusdt@depth1@100ms";
+    const std::string arbitrage_path = env_arbitrage_path ? env_arbitrage_path : "usdt:btcusdt:SELL,ltcbtc:SELL,ltcusdt:BUY";
 
     boost::asio::io_context io_context; 
     auto work_guard = boost::asio::make_work_guard(io_context);
@@ -34,10 +35,11 @@ int main() {
     ArbitragePath path = ArbitragePath::from_string(arbitrage_path);
 
     ServerConfig server_config(
-        env_profit_threshold ? std::stod(env_profit_threshold) : 0.0001,
-        env_taker_fee ? std::stod(env_taker_fee) : 0.0005,
+        env_profit_threshold ? std::stod(env_profit_threshold) : 0,
+        env_taker_fee ? std::stod(env_taker_fee) : 0.0000,
         env_max_starting_notional_fraction ? std::stod(env_max_starting_notional_fraction) : 0.8,
-        env_max_starting_notional_recalc_interval ? std::stod(env_max_starting_notional_recalc_interval) : 60.0
+        env_max_starting_notional_recalc_interval ? std::stod(env_max_starting_notional_recalc_interval) : 0,
+        env_use_first_level_only ? std::string(env_use_first_level_only) == "true" : true
     );
 
     auto client = std::make_shared<BinanceClient>(io_context,ctx);

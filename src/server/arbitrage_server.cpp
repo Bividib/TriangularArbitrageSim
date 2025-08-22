@@ -94,7 +94,7 @@ void Server::on_update(OrderBookTick& update) {
 void Server::recalcStartingNotional() {
     if (ticksRemainingBeforeRecalc == 0) {
         ticksRemainingBeforeRecalc = config.maxStartingNotionalRecalcInterval;
-        startingNotional = calculateStartingNotional(path,pairToPriceMap);
+        startingNotional = config.useFirstLevelOnly ? calculateStartingNotionalWithFirstLevelOnly(path,pairToPriceMap) : calculateStartingNotional(path,pairToPriceMap);
     } else {
         ticksRemainingBeforeRecalc--;
         startingNotional = startingNotional;

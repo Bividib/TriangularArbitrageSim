@@ -236,5 +236,35 @@ TEST_F(StartingNotionalTest, CalculateStartingNotional) {
     
     EXPECT_DOUBLE_EQ(actual.notional, expected.notional);
     EXPECT_EQ(actual.bottleneckLeg, expected.bottleneckLeg);
+}
 
+TEST_F(StartingNotionalTest, CalculateStartingNotionalWithFirstLevelOnly) {
+    StartingNotional expected = {0.03171000 * 23.57890000, "ethbtc"};
+    StartingNotional actual = calculateStartingNotionalWithFirstLevelOnly(path,pairToPriceMap);
+
+    EXPECT_DOUBLE_EQ(actual.notional, expected.notional);
+    EXPECT_EQ(actual.bottleneckLeg, expected.bottleneckLeg);
+
+}
+
+TEST_F(StartingNotionalTest, BottleneckIsLeg1) {
+    // To make leg1 the bottleneck, we reduce its available quantity.
+    pairToPriceMap["btcusdt"].bids[0] = PriceLevel(117992.29000000, 0.0001);
+
+    StartingNotional expected = {0.0001, "btcusdt"};
+    StartingNotional actual = calculateStartingNotionalWithFirstLevelOnly(path, pairToPriceMap);
+
+    EXPECT_DOUBLE_EQ(actual.notional, expected.notional);
+    EXPECT_EQ(actual.bottleneckLeg, expected.bottleneckLeg);
+}
+
+TEST_F(StartingNotionalTest, BottleneckIsLeg2) {
+    pairToPriceMap["ethusdt"].asks[0] = PriceLevel(3742.11000000, 0.000001);
+    
+    const double expected_notional = (3742.11000000 * 0.000001) / pairToPriceMap.at("btcusdt").getBestBidPrice();
+    StartingNotional expected = {expected_notional, "ethusdt"};
+    StartingNotional actual = calculateStartingNotionalWithFirstLevelOnly(path, pairToPriceMap);
+
+    EXPECT_DOUBLE_EQ(actual.notional, expected.notional);
+    EXPECT_EQ(actual.bottleneckLeg, expected.bottleneckLeg);
 }

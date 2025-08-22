@@ -15,10 +15,11 @@ struct ServerConfig {
     double takerFee;
     double maxStartingNotionalFraction;
     double maxStartingNotionalRecalcInterval;
+    bool useFirstLevelOnly;
 
     // Constructor to easily initialize config
-    ServerConfig(double profitThresh, double fee, double maxNotionalFraction, double maxNotionalRecalcInterval)
-        : profitThreshold(profitThresh+1), takerFee(std::pow(1 - fee, 3)), maxStartingNotionalFraction(maxNotionalFraction), maxStartingNotionalRecalcInterval(maxNotionalRecalcInterval) {}
+    ServerConfig(double profitThresh, double fee, double maxNotionalFraction, double maxNotionalRecalcInterval, bool useFirstLevel)
+        : profitThreshold(profitThresh+1), takerFee(std::pow(1 - fee, 3)), maxStartingNotionalFraction(maxNotionalFraction), maxStartingNotionalRecalcInterval(maxNotionalRecalcInterval), useFirstLevelOnly(useFirstLevel) {}
 };
 
 class Server : public std::enable_shared_from_this<Server> {

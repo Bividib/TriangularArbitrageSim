@@ -39,8 +39,9 @@ struct StartingNotional {
     If Leg1 is Bid then divide by Leg1's Rate
     Otherwise Leg1 is Ask so multiply by Leg1's Rate
  */
-StartingNotional calculateStartingNotional(const ArbitragePath& path, 
-                                 const std::unordered_map<std::string, OrderBookTick>& pairToPriceMap);
+StartingNotional calculateStartingNotional(const ArbitragePath& path, const std::unordered_map<std::string, OrderBookTick>& pairToPriceMap);
+
+StartingNotional calculateStartingNotionalWithFirstLevelOnly(const ArbitragePath& path, const std::unordered_map<std::string, OrderBookTick>& pairToPriceMap);
 
 double getEffectiveRate(const TradeLeg& leg, const OrderBookTick& tick, double current_notional_in_previous_leg_currency);
 

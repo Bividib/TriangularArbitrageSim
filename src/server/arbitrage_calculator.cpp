@@ -1,7 +1,6 @@
 #include "arbitrage_calculator.h"
 
-StartingNotional calculateStartingNotional(const ArbitragePath& path, 
-                                 const std::unordered_map<std::string, OrderBookTick>& pairToPriceMap) {
+StartingNotional calculateStartingNotional(const ArbitragePath& path, const std::unordered_map<std::string, OrderBookTick>& pairToPriceMap) {
   
     auto calculateBookSideValue = 
         [](const std::vector<PriceLevel>& levels, bool sumBaseQuantity) -> double {
@@ -54,6 +53,32 @@ StartingNotional calculateStartingNotional(const ArbitragePath& path,
     const auto& levels3 = leg3.requiresInversion ? tick3.asks : tick3.bids;
     const double thirdLegValue = calculateBookSideValue(levels3, leg3.requiresInversion);
 
+    const StartingNotional leg3StartingNotional = {thirdLegValue, leg3.symbol};
+
+    // std::cout << "leg1 starting notional is " << leg1StartingNotional.notional << "\n";
+    // std::cout << "leg2 starting notional is " << leg2StartingNotional.notional << "\n";
+    // std::cout << "leg3 starting notional is " << leg3StartingNotional.notional << "\n";
+
+    return std::min({leg1StartingNotional, leg2StartingNotional, leg3StartingNotional});
+}
+
+StartingNotional calculateStartingNotionalWithFirstLevelOnly(const ArbitragePath& path, const std::unordered_map<std::string, OrderBookTick>& pairToPriceMap){
+
+    // Get the first leg's tick data
+    const auto& leg1 = path.getFirstLeg();
+    const auto& tick1 = pairToPriceMap.at(leg1.symbol);
+    const double firstLegValue = leg1.requiresInversion ? tick1.getBestAskQty() * tick1.getBestAskPrice() : tick1.getBestBidQty();
+    const StartingNotional leg1StartingNotional = {firstLegValue, leg1.symbol};
+
+    const auto& leg2 = path.getSecondLeg();
+    const auto& tick2 = pairToPriceMap.at(leg2.symbol);
+    const double secondLegIntermediaryValue = leg2.requiresInversion ? tick2.getBestAskQty() * tick2.getBestAskPrice() : tick2.getBestBidQty();
+    const double secondLegValue = leg1.requiresInversion ? secondLegIntermediaryValue * tick1.getBestAskPrice() : secondLegIntermediaryValue / tick1.getBestBidPrice();
+    const StartingNotional leg2StartingNotional = {secondLegValue, leg2.symbol};
+
+    const auto& leg3 = path.getThirdLeg();
+    const auto& tick3 = pairToPriceMap.at(leg3.symbol);
+    const double thirdLegValue = leg3.requiresInversion ? tick3.getBestAskQty() : tick3.getBestBidQty() * tick3.getBestBidPrice();
     const StartingNotional leg3StartingNotional = {thirdLegValue, leg3.symbol};
 
     // std::cout << "leg1 starting notional is " << leg1StartingNotional.notional << "\n";
