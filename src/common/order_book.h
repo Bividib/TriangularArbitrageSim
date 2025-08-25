@@ -1,5 +1,5 @@
-#ifndef COMMON_H
-#define COMMON_H
+#ifndef ORDER_BOOK_H
+#define ORDER_BOOK_H
 
 #include <boost/beast/core/error.hpp>
 #include <string>
@@ -23,13 +23,7 @@ struct OrderBookTick {
     std::vector<PriceLevel> bids; // Sorted from highest bid price to lowest
     std::vector<PriceLevel> asks; // Sorted from lowest ask price to highest
 
-    long long tickInitTime;
-    long long processTime; 
-
-    double unrealisedPnl; 
-    double tradedNotional; 
-    std::string bottleneckLeg; 
-    bool arbitrageOpportunity;
+    long long tickInitTime; // Time when the tick was created/received
 
     OrderBookTick(long long u, 
                   std::string s, 
@@ -42,12 +36,7 @@ struct OrderBookTick {
           jsonStr(std::move(json)),
           bids(std::move(b)), 
           asks(std::move(a)), 
-          tickInitTime(ts), 
-          processTime(0),
-          unrealisedPnl(0),
-          tradedNotional(0),
-          arbitrageOpportunity(false),
-          bottleneckLeg("") {}
+          tickInitTime(ts) {}
 
     OrderBookTick(){}
 
@@ -81,4 +70,4 @@ struct OrderBookTick {
     }
 };
 
-#endif // COMMON_H
+#endif // ORDER_BOOK_H

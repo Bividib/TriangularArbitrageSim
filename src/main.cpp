@@ -23,8 +23,8 @@ int main() {
     const std::string port = "9443";
 
     const std::string trade_write_file_path = env_path ? env_path : "";
-    const std::string target = env_target ? env_target : "/stream?streams=btcusdt@depth1@100ms/ltcbtc@depth1@100ms/ltcusdt@depth1@100ms";
-    const std::string arbitrage_path = env_arbitrage_path ? env_arbitrage_path : "usdt:btcusdt:SELL,ltcbtc:SELL,ltcusdt:BUY";
+    const std::string target = env_target ? env_target : "/stream?streams=btcusdt@depth20@100ms/ethbtc@depth20@100ms/ethusdt@depth20@100ms";
+    const std::string arbitrage_path = env_arbitrage_path ? env_arbitrage_path : "btc:btcusdt:BUY,ethusdt:SELL,ethbtc:BUY";
 
     boost::asio::io_context io_context; 
     auto work_guard = boost::asio::make_work_guard(io_context);
@@ -36,8 +36,8 @@ int main() {
 
     ServerConfig server_config(
         env_profit_threshold ? std::stod(env_profit_threshold) : 0,
-        env_taker_fee ? std::stod(env_taker_fee) : 0.0000,
-        env_max_starting_notional_fraction ? std::stod(env_max_starting_notional_fraction) : 0.8,
+        env_taker_fee ? std::stod(env_taker_fee) : 0,
+        env_max_starting_notional_fraction ? std::stod(env_max_starting_notional_fraction) : 1,
         env_max_starting_notional_recalc_interval ? std::stod(env_max_starting_notional_recalc_interval) : 0,
         env_use_first_level_only ? std::string(env_use_first_level_only) == "true" : true
     );
@@ -53,7 +53,7 @@ int main() {
     }
 
     std::cout << "Starting Triangular Arbitrage Bot" << "\n"
-              << "########## CONFIGURATION ##########" << "\n"
+              << "########### CONFIGURATION ###########" << "\n"
               << "Writing results to: " << trade_write_file_path << "\n"
               << "Websocket Stream Target: " << target << "\n"
               << "Arbitrage Path to Search: " << arbitrage_path << "\n"
@@ -61,7 +61,8 @@ int main() {
               << "Taker Fee: " << server_config.takerFee << "\n"
               << "Max Starting Notional Fraction: " << server_config.maxStartingNotionalFraction << "\n"
               << "Max Starting Notional Recalc Interval: " << server_config.maxStartingNotionalRecalcInterval << "\n"
-              << "####################################" << "\n";
+              << "Use First Level Only: " << (server_config.useFirstLevelOnly ? "true" : "false") << "\n"
+              << "######################################" << "\n";
 
     client->async_connect(host, port, target);
 

@@ -4,7 +4,7 @@
 #include <fstream>
 #include <nlohmann/json.hpp>
 
-#include "common/order_book.h"
+#include "common/arbitrage_result.h"
 
 class TradeFileWriter {
 public:
@@ -12,7 +12,7 @@ public:
     explicit TradeFileWriter(const std::string& file_path);
 
     /**
-     * Writes an OrderBookTick to a text file
+     * Writes an ArbitrageResult to a text file
      * Inserts the following comma separated details per tick on a new line: 
      * 
      * - JSON string representation of the tick
@@ -22,9 +22,9 @@ public:
      * - Traded Notional
      * - Bottleneck Leg Identifier (minimum of the 3 for getting started notional)
      * 
-     * @param tick The OrderBookTick to write to the file
+     * @param result The ArbitrageResult to write to the file
      */
-    void write(const OrderBookTick& tick);
+    void write(const ArbitrageResult& result);
 
     // Destructor closes the file
     ~TradeFileWriter();
