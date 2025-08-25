@@ -66,16 +66,16 @@ void Server::on_update(OrderBookTick& update) {
     newNotional = newNotional * config.takerFee;
 
     double profit = newNotional - initialNotional;
-    std::cout << std::fixed << std::setprecision(15) << profit << "\n"; // Example: 15 decimal places
+    // std::cout << std::fixed << std::setprecision(15) << profit << "\n"; // Example: 15 decimal places
 
     bool arbitrageOpportunity = false;
 
     // Consider only large enough profits to protect against realtime slippages
     if (newNotional >= initialNotional * config.profitThreshold) {
-        std::cout << "Arbitrage opportunity detected!\n";
-        std::cout << "Initial Traded Notional: " << initialNotional << "\n";
-        std::cout << "Final Notional after Trades: " << newNotional << "\n";
-        std::cout << "Profit: " << profit << "\n";
+        // std::cout << "Arbitrage opportunity detected!\n";
+        // std::cout << "Initial Traded Notional: " << initialNotional << "\n";
+        // std::cout << "Final Notional after Trades: " << newNotional << "\n";
+        // std::cout << "Profit: " << profit << "\n";
 
         currentNotional = newNotional;
         arbitrageOpportunity = true; 
