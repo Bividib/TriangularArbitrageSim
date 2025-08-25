@@ -52,17 +52,17 @@ int main() {
         client->set_callback(server);
     }
 
-    std::cout << "Starting Triangular Arbitrage Bot" << "\n"
-              << "########### CONFIGURATION ###########" << "\n"
-              << "Writing results to: " << trade_write_file_path << "\n"
-              << "Websocket Stream Target: " << target << "\n"
-              << "Arbitrage Path to Search: " << arbitrage_path << "\n"
-              << "Profit Threshold: " << server_config.profitThreshold << "\n"
-              << "Taker Fee: " << server_config.takerFee << "\n"
-              << "Max Starting Notional Fraction: " << server_config.maxStartingNotionalFraction << "\n"
-              << "Max Starting Notional Recalc Interval: " << server_config.maxStartingNotionalRecalcInterval << "\n"
-              << "Use First Level Only: " << (server_config.useFirstLevelOnly ? "true" : "false") << "\n"
-              << "######################################" << "\n";
+    std::cout << "Starting Triangular Arbitrage Bot" << std::endl;
+    std::cout << "########### CONFIGURATION ###########" << std::endl;
+    std::cout << "Writing results to: " << trade_write_file_path << std::endl;
+    std::cout << "Websocket Stream Target: " << target << std::endl;
+    std::cout << "Arbitrage Path to Search: " << arbitrage_path << std::endl;
+    std::cout << "Profit Threshold: " << server_config.profitThreshold << std::endl;
+    std::cout << "Taker Fee: " << server_config.takerFee << std::endl;
+    std::cout << "Max Starting Notional Fraction: " << server_config.maxStartingNotionalFraction << std::endl;
+    std::cout << "Max Starting Notional Recalc Interval: " << server_config.maxStartingNotionalRecalcInterval << std::endl;
+    std::cout << "Use First Level Only: " << (server_config.useFirstLevelOnly ? "true" : "false") << std::endl;
+    std::cout << "######################################" << std::endl;
 
     client->async_connect(host, port, target);
 
