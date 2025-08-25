@@ -1,0 +1,2 @@
+#!/bin/bash
+./run_triangular_arbitrage_bot.sh "usdt_btc_xrp_bot" "UsdtBtcXrpUsdt" "usdt:btcusdt:SELL,xrpbtc:SELL,xrpusdt:BUY" "/stream?streams=btcusdt@depth20@100ms/xrpbtc@depth5@100ms/xrpusdt@depth20@100ms"

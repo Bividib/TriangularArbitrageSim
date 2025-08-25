@@ -1,0 +1,16 @@
+# Ignore git files
+.git
+.gitignore
+
+# Ignore local build artifacts
+build/
+build_ci/
+
+# Ignore Docker files
+Dockerfile
+.dockerignore
+
+# Ignore IDE/editor specific files
+.vscode/
+*.sln
+*.vcxproj*

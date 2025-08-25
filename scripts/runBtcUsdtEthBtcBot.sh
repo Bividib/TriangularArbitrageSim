@@ -1,0 +1,2 @@
+#!/bin/bash
+./run_triangular_arbitrage_bot.sh "btc_usdt_eth_bot" "BtcUsdtEthBtc" "btc:btcusdt:BUY,ethusdt:SELL,ethbtc:BUY" "/stream?streams=btcusdt@depth20@100ms/ethbtc@depth20@100ms/ethusdt@depth20@100ms"
