@@ -1,4 +1,5 @@
 #include "binance_client.h"
+#include "common/trade_util.h"
 #include <iostream>
 #include <boost/asio/strand.hpp>
 #include <boost/beast/core/bind_handler.hpp>
