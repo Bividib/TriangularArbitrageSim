@@ -1,8 +1,9 @@
 #include "file/trade_file_writer.h"
+#include "common/trade_util.h"
 #include <iomanip>
 
 TradeFileWriter::TradeFileWriter(const std::string& filePath)
-    : file_stream_(filePath, std::ios::app)
+    : file_stream_(filePath, std::ios::app), filePath_(filePath)
 {}
 
 TradeFileWriter::~TradeFileWriter() {
@@ -25,5 +26,16 @@ void TradeFileWriter::write(const ArbitrageResult& result) {
         tick_json["rate2"] = result.rates[1];
         tick_json["rate3"] = result.rates[2];
         file_stream_ << std::fixed << std::setprecision(10) << tick_json.dump() << "\n";
+
+        if (!file_stream_.good()) {
+            const std::string error_message = "Error writing to file. Stream state: "
+                      "badbit=" + std::to_string(file_stream_.bad()) +
+                      " eofbit=" + std::to_string(file_stream_.eof()) +
+                      " failbit=" + std::to_string(file_stream_.fail());
+            fail("TradeFileWriter Error", error_message.c_str());
+            file_stream_.clear();
+            file_stream_.close();
+            file_stream_.open(filePath_, std::ios::app);
+        }
     }
 }
