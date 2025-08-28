@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <common/order_book.h>
 #include <common/trade_leg.h>
+#include <unordered_map>
 
 struct StartingNotional {
     double notional;
