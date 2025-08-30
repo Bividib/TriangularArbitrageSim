@@ -121,7 +121,11 @@ void BinanceClient::on_read(boost::beast::error_code ec, std::size_t bytes_trans
         std::cout << "WebSocket connection closed gracefully.\n";
         return;
     }
-    if (ec) return fail(ec, "read");
+    if (ec){ 
+        fail(ec, "read");
+        std::cerr << "Restarting connection due to unexpected error ... " << std::endl;
+        async_connect(host,port,target);
+    }
 
     long long localTimestampNs = std::chrono::duration_cast<std::chrono::nanoseconds>(
         std::chrono::system_clock::now().time_since_epoch()
