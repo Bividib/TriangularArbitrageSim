@@ -125,6 +125,7 @@ void BinanceClient::on_read(boost::beast::error_code ec, std::size_t bytes_trans
         fail(ec, "read");
         std::cerr << "Restarting connection due to unexpected error ... " << std::endl;
         async_connect(host,port,target);
+        return; 
     }
 
     long long localTimestampNs = std::chrono::duration_cast<std::chrono::nanoseconds>(
