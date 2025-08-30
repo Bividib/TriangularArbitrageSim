@@ -108,8 +108,7 @@ jobs:
     # This job will only run after 'build-test-coverage' succeeds
     needs: build-test-coverage
     runs-on: ubuntu-latest
-    # Only run this job for pushes to the main/master branch, not for pull requests
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') || github.event_name == 'pull_request'
+    if: github.event_name == 'push'
 
     steps:
       - name: Checkout code
@@ -129,18 +128,18 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
-          push: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') }}
+          push: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ vars.DOCKER_IMAGE_NAME }}:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ vars.DOCKER_IMAGE_NAME }}:${{ github.sha }}
 
-      - name: Build and push PR Docker image
+      - name: Build and push Branch Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile
-          push: ${{ github.event_name == 'pull_request' }}
+          push:  ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/master' }}
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ vars.DOCKER_IMAGE_NAME }}:${{ github.head_ref || github.ref_name }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ vars.DOCKER_IMAGE_NAME }}:${{ github.ref_name }}
 
       
