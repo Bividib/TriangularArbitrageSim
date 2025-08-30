@@ -1,12 +1,9 @@
 #ifndef ORDER_BOOK_H
 #define ORDER_BOOK_H
 
-#include <boost/beast/core/error.hpp>
 #include <string>
 #include <vector>
 #include <iostream>
-
-void fail(const boost::beast::error_code& ec, const char* category);
 
 struct PriceLevel {
     double price;

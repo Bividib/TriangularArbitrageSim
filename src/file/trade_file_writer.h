@@ -31,4 +31,5 @@ public:
 
 private:
     std::ofstream file_stream_;
+    std::string filePath_;
 };

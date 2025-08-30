@@ -232,6 +232,9 @@ venv.bak/
 # Rope project settings
 .ropeproject
 
+*.png
+*.jpeg
+
 # mkdocs documentation
 /site
 

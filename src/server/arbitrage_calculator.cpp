@@ -1,4 +1,5 @@
 #include "arbitrage_calculator.h"
+#include <limits>
 
 StartingNotional calculateStartingNotional(const ArbitragePath& path, const std::unordered_map<std::string, OrderBookTick>& pairToPriceMap) {
   
