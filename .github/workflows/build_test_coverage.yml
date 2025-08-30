@@ -3,8 +3,6 @@ name: C++ CI (Build, Test, Coverage)
 on:
   push:
     branches: [ main, master, dev ]
-  pull_request:
-    branches: [ main, master, dev ]
 
 env:
   BUILD_TYPE: Release
@@ -111,7 +109,7 @@ jobs:
     needs: build-test-coverage
     runs-on: ubuntu-latest
     # Only run this job for pushes to the main/master branch, not for pull requests
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') || github.event_name == 'pull_request'
 
     steps:
       - name: Checkout code
