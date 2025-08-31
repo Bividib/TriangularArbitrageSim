@@ -1,4 +1,5 @@
 #include "binance_client.h"
+#include "common/trade_util.h"
 #include <iostream>
 #include <boost/asio/strand.hpp>
 #include <boost/beast/core/bind_handler.hpp>
@@ -19,18 +20,26 @@ void BaseClient::write_str_to_buf(const std::string& str, boost::beast::flat_buf
 const std::string BinanceClient::WS_CLIENT_HEADER = "TriangularArbitrageAsyncBinanceWsClient";
 
 BinanceClient::BinanceClient(boost::asio::io_context& ioc, boost::asio::ssl::context& ssl_ctx) 
-    : BaseClient(ioc, ssl_ctx), resolver(ioc) {
-    ws.set_option(boost::beast::websocket::stream_base::timeout::suggested(boost::beast::role_type::client));
-    ws.set_option(boost::beast::websocket::stream_base::decorator(
-        [](boost::beast::websocket::request_type& req) {
-            req.set(boost::beast::http::field::user_agent, WS_CLIENT_HEADER);
-        }
-    ));
+    : BaseClient(ioc), resolver(ioc), ssl_ctx(ssl_ctx) {
     std::cout << "BinanceClient initialised" << "\n";
 }
 
 void BinanceClient::set_callback(const std::shared_ptr<Server>& server){
     callback = server;
+}
+
+void BinanceClient::reset_stream(boost::asio::ssl::context& ssl_ctx) {
+
+    std::cout << "Resetting WebSocket stream ..." << std::endl;
+    ws = std::make_unique<boost::beast::websocket::stream<boost::beast::ssl_stream<boost::beast::tcp_stream>>>(strand, ssl_ctx);
+    
+    ws->set_option(boost::beast::websocket::stream_base::timeout::suggested(boost::beast::role_type::client));
+    ws->set_option(boost::beast::websocket::stream_base::decorator(
+        [](boost::beast::websocket::request_type& req) {
+            req.set(boost::beast::http::field::user_agent, WS_CLIENT_HEADER);
+        }
+    ));
+    std::cout << "WebSocket stream reset complete." << std::endl;
 }
 
 void BinanceClient::async_connect(const std::string& host_in, const std::string& port_in, const std::string& target_in) {
@@ -40,12 +49,11 @@ void BinanceClient::async_connect(const std::string& host_in, const std::string&
 
     std::cout << "Connecting to Binance WebSocket at " << host << ":" << port << target << "\n";
 
-    resolver.async_resolve(
-        host,
-        port,
-        boost::beast::bind_front_handler(
-            &BinanceClient::on_resolve,
-            shared_from_this()
+    reset_stream(ssl_ctx);
+
+    resolver.async_resolve(host, port,
+        boost::asio::bind_executor(strand,
+            boost::beast::bind_front_handler(&BinanceClient::on_resolve, shared_from_this())
         )
     );
 }
@@ -53,14 +61,12 @@ void BinanceClient::async_connect(const std::string& host_in, const std::string&
 void BinanceClient::on_resolve(boost::beast::error_code ec, boost::asio::ip::tcp::resolver::results_type results) {
     if (ec) return fail(ec, "Resolve Endpoint");
 
-    auto& lowest_layer = boost::beast::get_lowest_layer(ws);
+    auto& lowest_layer = boost::beast::get_lowest_layer(*ws);
     lowest_layer.expires_after(std::chrono::seconds(30));
-    
-    lowest_layer.async_connect(
-        results,
-        boost::beast::bind_front_handler(
-            &BinanceClient::on_connect,
-            shared_from_this()
+
+    lowest_layer.async_connect(results,
+        boost::asio::bind_executor(strand,
+            boost::beast::bind_front_handler(&BinanceClient::on_connect, shared_from_this())
         )
     );
 }
@@ -69,13 +75,12 @@ void BinanceClient::on_connect(boost::beast::error_code ec, boost::asio::ip::tcp
     if (ec) return fail(ec, "Client TCP Connect");
 
     std::cout << "TCP Connection established, starting SSL Handshake..." << "\n";
-    boost::beast::get_lowest_layer(ws).expires_never();
+    boost::beast::get_lowest_layer(*ws).expires_never();
 
-    ws.next_layer().async_handshake(
+    ws->next_layer().async_handshake(
         boost::asio::ssl::stream_base::client,
-        boost::beast::bind_front_handler(
-            &BinanceClient::on_ssl_handshake,
-            shared_from_this()
+        boost::asio::bind_executor(strand,
+            boost::beast::bind_front_handler(&BinanceClient::on_ssl_handshake, shared_from_this())
         )
     );
 }
@@ -84,12 +89,11 @@ void BinanceClient::on_ssl_handshake(boost::beast::error_code ec) {
     if (ec) return fail(ec, "Client SSL Handshake");
 
     std::cout << "SSL Handshake successful, starting WS Handshake..." << "\n";
-    ws.async_handshake(
+    ws->async_handshake(
         host,
         target,
-        boost::beast::bind_front_handler(
-            &BinanceClient::on_ws_handshake,
-            shared_from_this()
+        boost::asio::bind_executor(strand,
+            boost::beast::bind_front_handler(&BinanceClient::on_ws_handshake, shared_from_this())
         )
     );
 }
@@ -107,9 +111,11 @@ void BinanceClient::run_client() {
 }
 
 void BinanceClient::read() {
-    ws.async_read(buffer, boost::beast::bind_front_handler(
-        &BinanceClient::on_read,
-        shared_from_this()
+    ws->async_read(buffer, boost::asio::bind_executor(strand,
+        boost::beast::bind_front_handler(
+            &BinanceClient::on_read,
+            shared_from_this()
+        )
     ));
 }
 
@@ -117,10 +123,21 @@ void BinanceClient::on_read(boost::beast::error_code ec, std::size_t bytes_trans
     boost::ignore_unused(bytes_transferred);
 
     if (ec == boost::beast::websocket::error::closed) {
-        std::cout << "WebSocket connection closed gracefully.\n";
+        std::cout << "WebSocket connection closed gracefully" << std::endl;
         return;
     }
-    if (ec) return fail(ec, "read");
+    if (ec) {
+        fail(ec, "read");
+        std::cerr << "Restarting connection due to unexpected error ... " << std::endl;
+        buffer.consume(buffer.size());
+        reconnect_timer.expires_after(std::chrono::seconds(5));
+        reconnect_timer.async_wait(
+            boost::asio::bind_executor(strand, [self = shared_from_this()](boost::beast::error_code) {
+                self->async_connect(self->host, self->port, self->target);
+            })
+        );
+        return; 
+    }
 
     long long localTimestampNs = std::chrono::duration_cast<std::chrono::nanoseconds>(
         std::chrono::system_clock::now().time_since_epoch()

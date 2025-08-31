@@ -24,9 +24,9 @@
  */
 class Client {
 public:
-    // Constructor must be public
-    explicit Client(boost::asio::io_context& ioc, boost::asio::ssl::context& ssl_ctx) 
-        : ws(boost::asio::make_strand(ioc), ssl_ctx) {}
+    explicit Client(boost::asio::io_context& ioc) 
+        : strand(ioc.get_executor()), 
+          reconnect_timer(ioc) {}
 
     // Virtual destructor is essential for classes with virtual functions
     virtual ~Client() = default;
@@ -39,7 +39,10 @@ public:
 
 protected:
     // Member variables are protected so derived classes can access them
-    boost::beast::websocket::stream<boost::beast::ssl_stream<boost::beast::tcp_stream>> ws;
+    std::unique_ptr<boost::beast::websocket::stream<boost::beast::ssl_stream<boost::beast::tcp_stream>>> ws;
+    boost::asio::strand<boost::asio::io_context::executor_type> strand;
+    boost::asio::steady_timer reconnect_timer;
+
     boost::beast::flat_buffer buffer;
     std::string host;
     std::string port;
@@ -48,6 +51,7 @@ protected:
 
     // These are the asynchronous handlers for the connection steps.
     // They are now pure virtual, forcing any concrete derived class to implement them.
+    virtual void reset_stream(boost::asio::ssl::context& ssl_ctx) = 0;
     virtual void on_resolve(boost::beast::error_code ec, boost::asio::ip::tcp::resolver::results_type results) = 0;
     virtual void on_connect(boost::beast::error_code ec, boost::asio::ip::tcp::resolver::results_type::endpoint_type endpoint) = 0;
     virtual void on_ssl_handshake(boost::beast::error_code ec) = 0;
@@ -66,10 +70,7 @@ protected:
  */
 class BaseClient : public Client {
 public:
-    // Pass constructor arguments to the base class
-    BaseClient(boost::asio::io_context& ioc, boost::asio::ssl::context& ssl_ctx)
-        : Client(ioc, ssl_ctx) {}
-
+    BaseClient(boost::asio::io_context& ioc) : Client(ioc) {}
 
 protected:
     // Helper function to copy a string into the buffer for writing.

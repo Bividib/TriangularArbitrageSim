@@ -59,11 +59,8 @@ void Server::on_update(OrderBookTick& update) {
         }
 
         rates[i] = rate;
-        newNotional = newNotional * rate;
+        newNotional = newNotional * rate * config.takerFee;
     }
-
-    // Subtract taker fees
-    newNotional = newNotional * config.takerFee;
 
     double profit = newNotional - initialNotional;
     // std::cout << std::fixed << std::setprecision(15) << profit << "\n"; // Example: 15 decimal places

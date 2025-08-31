@@ -23,7 +23,7 @@ int main() {
     const std::string port = "9443";
 
     const std::string trade_write_file_path = env_path ? env_path : "";
-    const std::string target = env_target ? env_target : "/stream?streams=btcusdt@depth20@100ms/ethbtc@depth20@100ms/ethusdt@depth20@100ms";
+    const std::string target = env_target ? env_target : "/stream?streams=btcusdt@depth5@100ms/ethbtc@depth5@100ms/ethusdt@depth5@100ms";
     const std::string arbitrage_path = env_arbitrage_path ? env_arbitrage_path : "btc:btcusdt:BUY,ethusdt:SELL,ethbtc:BUY";
 
     boost::asio::io_context io_context; 
