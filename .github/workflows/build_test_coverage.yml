@@ -124,21 +124,23 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build and push Main Docker image
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile
-          push: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
+          push: True
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ vars.DOCKER_IMAGE_NAME }}:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ vars.DOCKER_IMAGE_NAME }}:${{ github.sha }}
 
       - name: Build and push Branch Docker image
+        if: github.ref != 'refs/heads/main' && github.ref != 'refs/heads/master'
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile
-          push:  ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/master' }}
+          push: True
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ vars.DOCKER_IMAGE_NAME }}:${{ github.ref_name }}
 
