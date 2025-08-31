@@ -22,7 +22,7 @@ int main() {
     const std::string host = "stream.binance.com";
     const std::string port = "9443";
 
-    const std::string trade_write_file_path = env_path ? env_path : "C:\\Y3\\VSCode\\TriangularArbitrageSim\\src\\test.txt";
+    const std::string trade_write_file_path = env_path ? env_path : "";
     const std::string target = env_target ? env_target : "/stream?streams=btcusdt@depth5@100ms/ethbtc@depth5@100ms/ethusdt@depth5@100ms";
     const std::string arbitrage_path = env_arbitrage_path ? env_arbitrage_path : "btc:btcusdt:BUY,ethusdt:SELL,ethbtc:BUY";
 
