@@ -74,6 +74,11 @@ def analyse_traded_notional_frequency_table(df: pl.DataFrame):
         save_path=Path(RESOURCES_DIR / f"{FILE_NAME}_traded_notional_distribution.png")
     )
 
+def print_average_return_and_notional(df: pl.DataFrame):
+    average_return = df.select(pl.mean("AverageReturn")).item()
+    average_notional = df.select(pl.mean("AverageTradedNotional")).item()
+    print(f"Average Return: {average_return:.5f}%")
+    print(f"Average Traded Notional: {average_notional:.5f}")
 
 if __name__ == "__main__":
     # convert_file(JSON_FILE_PATH, PARQUET_FILE_PATH)
@@ -100,3 +105,5 @@ if __name__ == "__main__":
     analyse_return_percentage_frequency_table(summarised_grouped_data_df)
     analyse_duration_frequency_table(summarised_grouped_data_df)
     analyse_traded_notional_frequency_table(summarised_grouped_data_df)
+    print_average_return_and_notional(summarised_grouped_data_df)
+
