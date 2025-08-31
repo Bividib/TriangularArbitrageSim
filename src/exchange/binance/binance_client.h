@@ -31,12 +31,15 @@ private:
     void read() override;
     void on_read(boost::beast::error_code ec, std::size_t bytes_transferred) override;
 
+    void reset_stream(boost::asio::ssl::context& ssl_ctx) override;
+
     static std::vector<PriceLevel> parsePriceLevels(const nlohmann::json& json_array);
 
     // Binance-specific implementation details
     OrderBookTick to_struct(const nlohmann::json& json_data, const std::string& json_string, long long localTimestampNs);
     boost::asio::ip::tcp::resolver resolver;
     static const std::string WS_CLIENT_HEADER;
+    boost::asio::ssl::context& ssl_ctx;
 };
 
 #endif // BINANCE_CLIENT_H
