@@ -19,7 +19,7 @@ struct ServerConfig {
 
     // Constructor to easily initialize config
     ServerConfig(double profitThresh, double fee, double maxNotionalFraction, double maxNotionalRecalcInterval, bool useFirstLevel)
-        : profitThreshold(profitThresh+1), takerFee(fee), maxStartingNotionalFraction(maxNotionalFraction), maxStartingNotionalRecalcInterval(maxNotionalRecalcInterval), useFirstLevelOnly(useFirstLevel) {}
+        : profitThreshold(profitThresh+1), takerFee(1-fee), maxStartingNotionalFraction(maxNotionalFraction), maxStartingNotionalRecalcInterval(maxNotionalRecalcInterval), useFirstLevelOnly(useFirstLevel) {}
 };
 
 class Server : public std::enable_shared_from_this<Server> {
