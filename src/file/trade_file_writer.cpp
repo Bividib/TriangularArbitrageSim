@@ -1,7 +1,6 @@
 #include "file/trade_file_writer.h"
 #include "common/trade_util.h"
 #include <iomanip>
-#include <sstream>
 
 TradeFileWriter::TradeFileWriter(const std::string& filePath)
     : file_stream_(filePath, std::ios::app), filePath_(filePath)
@@ -26,24 +25,6 @@ void TradeFileWriter::write(const ArbitrageResult& result) {
         tick_json["rate1"] = result.rates[0];
         tick_json["rate2"] = result.rates[1];
         tick_json["rate3"] = result.rates[2];
-
-        std::stringstream ss;
-        ss << std::fixed << std::setprecision(10);
-        
-        ss << result.unrealisedPnl;
-        tick_json["unrealisedPnl"] = ss.str();
-        ss.str(""); // Clear the stringstream for the next number
-
-        ss << result.rates[0];
-        tick_json["rate1"] = ss.str();
-        ss.str("");
-
-        ss << result.rates[1];
-        tick_json["rate2"] = ss.str();
-        ss.str("");
-
-        ss << result.rates[2];
-        tick_json["rate3"] = ss.str();
 
         // Write the finalized JSON to the file
         file_stream_ << tick_json.dump() << "\n";
