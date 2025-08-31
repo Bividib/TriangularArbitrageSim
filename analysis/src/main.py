@@ -46,7 +46,7 @@ def analyse_exchange_rate_product_over_time_period(df: pl.DataFrame):
 
 def analyse_return_percentage_frequency_table(df: pl.DataFrame):
     return_bins = [0.0, 0.025, 0.05, 0.075, 0.100, 0.200, 0.300, 0.400, 0.500]
-    create_and_save_frequency_plot(
+    create_and_save_frequency_table(
         df=df,
         column_name="Return",
         bins=return_bins,
@@ -56,7 +56,7 @@ def analyse_return_percentage_frequency_table(df: pl.DataFrame):
 
 def analyse_duration_frequency_table(df: pl.DataFrame):
     duration_bins = [0.0, 0.5, 1.0, 2.0, 3.0, 4.0, 5.0]
-    create_and_save_frequency_plot(
+    create_and_save_frequency_table(
         df=df,
         column_name="Duration",
         bins=duration_bins,
@@ -65,8 +65,8 @@ def analyse_duration_frequency_table(df: pl.DataFrame):
     )
 
 def analyse_traded_notional_frequency_table(df: pl.DataFrame):
-    notional_bins = [0, 1000, 2000, 3000, 4000, 5000, 10000]
-    create_and_save_frequency_plot(
+    notional_bins = [i/1000 for i in range(1,1000)]
+    create_and_save_frequency_table(
         df=df,
         column_name="TradedNotional",
         bins=notional_bins,

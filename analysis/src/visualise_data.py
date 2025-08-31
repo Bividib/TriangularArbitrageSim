@@ -153,7 +153,7 @@ def _create_frequency_table_df(
 
     return frequency_df
 
-def create_and_save_frequency_plot(
+def create_and_save_frequency_table(
     df: pl.DataFrame,
     column_name: str,
     bins: List[float],
@@ -161,53 +161,54 @@ def create_and_save_frequency_plot(
     save_path: Path
 ):
     """
-    Creates and saves a bar chart with a cumulative frequency line.
-
-    Args:
-        df: The input Polars DataFrame.
-        column_name: The column to plot.
-        bins: The list of bin edges.
-        title: The title of the plot.
-        save_path: The path to save the generated image.
+    Creates and saves a frequency distribution table as an image.
     """
     if df is None or df.is_empty():
-        print("DataFrame is empty, skipping plot.")
+        print("DataFrame is empty, skipping table creation.")
         return
 
-    # Create the frequency table using the helper function
+    # 1. Get the frequency data using your existing helper function
     freq_df = _create_frequency_table_df(df, column_name, bins)
 
-    # Convert the bin labels to a list for plotting
-    x = freq_df["bin_label"].to_list()
-    y_freq = freq_df["Rel. frequency"].to_list()
-    y_cumul = freq_df["Rel. total"].to_list()
-
-    # Create the plot with a secondary y-axis for the cumulative line
-    fig, ax1 = plt.subplots(figsize=(12, 6))
-
-    # Bar chart on the primary axis
-    ax1.bar(x, y_freq, color='skyblue', label='Relative Frequency')
-    ax1.set_xlabel(column_name.capitalize())
-    ax1.set_ylabel('Relative Frequency (%)', color='skyblue')
-    ax1.tick_params(axis='y', labelcolor='skyblue')
-    ax1.tick_params(axis='x', rotation=45)
-    ax1.grid(axis='y', linestyle='--', alpha=0.7)
-
-    # Line chart on the secondary axis
-    ax2 = ax1.twinx()
-    ax2.plot(x, y_cumul, color='red', marker='o', linestyle='-', label='Relative Cumulative Frequency')
-    ax2.set_ylabel('Relative Cumulative Frequency (%)', color='red')
-    ax2.tick_params(axis='y', labelcolor='red')
-
-    # Add a title and legend
-    plt.title(title)
+    # 2. Prepare data for rendering
+    # Select and format the columns to match the example table
+    table_df = freq_df.select([
+        "bin_label",
+        pl.col("Frequency").cast(str),
+        pl.col("Rel. frequency").round(2).cast(str),
+        pl.col("Total").cast(str),
+        pl.col("Rel. total").round(2).cast(str)
+    ])
     
-    # Combine legends from both axes
-    lines, labels = ax1.get_legend_handles_labels()
-    lines2, labels2 = ax2.get_legend_handles_labels()
-    ax2.legend(lines + lines2, labels + labels2, loc='upper left')
+    col_headers = ["Frequency", "Rel. frequency", "Total", "Rel. total"]
+    row_headers = table_df["bin_label"].to_list()
+    cell_text = table_df.drop("bin_label").to_numpy()
 
-    # Ensure the plot is saved without cutting off labels
-    plt.tight_layout()
-    plt.savefig(save_path)
-    print(f"Plot for '{column_name}' saved to {save_path}")
+    # 3. Create the table image
+    fig, ax = plt.subplots(figsize=(8, 4)) # Adjust figsize as needed
+    ax.axis('tight')
+    ax.axis('off') # Hide the axes
+
+    # Create the table object
+    table = ax.table(
+        cellText=cell_text,
+        colLabels=col_headers,
+        rowLabels=row_headers,
+        loc='center',
+        cellLoc='right',
+        colLoc='center'
+    )
+    
+    # Style the table to look professional
+    table.auto_set_font_size(False)
+    table.set_fontsize(10)
+    table.scale(1.2, 1.5) # Adjust cell padding
+
+    # 4. Add the title above the table
+    plt.title(title, y=1.08) # Adjust y to position the title
+
+    # 5. Save the figure
+    # bbox_inches='tight' is crucial for removing excess whitespace
+    plt.savefig(save_path, bbox_inches='tight', pad_inches=0.1)
+    print(f"Table for '{column_name}' saved to {save_path}")
+    plt.close(fig) # Close the figure to free up memory
