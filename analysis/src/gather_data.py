@@ -56,7 +56,25 @@ def get_grouped_opportunity_path_df(lazy_df: pl.LazyFrame) -> pl.LazyFrame:
         .cast(pl.Int8).cum_sum().alias("group_id")
     )
 
-    # 2. Filter to keep only rows where isArbitrageOpportunity is TRUE
+    # 2. Cast the columns to Float64 to prevent InvalidOperationError
+    df_with_correct_types = lazy_df.with_columns(
+        pl.col("unrealisedPnl").cast(pl.Float64),
+        pl.col("tradedNotional").cast(pl.Float64)
+    )
+
+    # 3. Filter to keep only rows where isArbitrageOpportunity is TRUE
     grouped_opportunities_df = df_with_groups.filter(pl.col("isArbitrageOpportunity"))
 
     return grouped_opportunities_df
+
+def summarise_arbitrages_by_group(grouped_df: pl.LazyFrame) -> pl.LazyFrame:
+    """
+    Summarizes each arbitrage opportunity group, calculating the return percentage and traded notional
+    based on the first element of each group as well as the time duration of the whole opportunity.
+    """
+
+    return grouped_df.group_by("group_id").agg(
+        (pl.first("unrealisedPnl") / pl.first("tradedNotional") * 100).alias("Return"),
+        (pl.last("tickReceiveTime") - pl.first("tickReceiveTime")).alias("Duration"),
+        (pl.first("tradedNotional")).alias("TradedNotional")
+    )

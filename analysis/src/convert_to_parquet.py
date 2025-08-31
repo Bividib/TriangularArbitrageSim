@@ -8,8 +8,24 @@ def convert_with_polars(json_path, parquet_path):
         return -1
 
     print("Starting conversion...")
+ 
     try:
-        pl.scan_ndjson(json_path).sink_parquet(parquet_path)
+        schema = pl.Schema({
+            "bottleneckLeg" : pl.Utf8,
+            "unrealisedPnl": pl.Float64,
+            "tradedNotional": pl.Float64,
+            "orderBookLevels" : pl.Utf8,
+            "tickProcessTime" : pl.Int64,
+            "tickReceiveTime" : pl.Int64,
+            "rate1": pl.Float64,
+            "rate2": pl.Float64,
+            "rate3": pl.Float64,
+            "isArbitrageOpportunity": pl.Boolean
+
+        })
+
+        pl.scan_ndjson(json_path, schema=schema).sink_parquet(parquet_path)
+
         print("Conversion complete!")
         print(f"Parquet file saved to: {parquet_path}")
         return 0
