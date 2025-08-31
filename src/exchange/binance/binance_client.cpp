@@ -21,7 +21,7 @@ const std::string BinanceClient::WS_CLIENT_HEADER = "TriangularArbitrageAsyncBin
 
 BinanceClient::BinanceClient(boost::asio::io_context& ioc, boost::asio::ssl::context& ssl_ctx) 
     : BaseClient(ioc), resolver(ioc), ssl_ctx(ssl_ctx) {
-    std::cout << "BinanceClient initialised" << "\n";
+    std::cout << "BinanceClient initialised" << std::endl;
 }
 
 void BinanceClient::set_callback(const std::shared_ptr<Server>& server){
@@ -47,7 +47,7 @@ void BinanceClient::async_connect(const std::string& host_in, const std::string&
     port = port_in;
     target = target_in;
 
-    std::cout << "Connecting to Binance WebSocket at " << host << ":" << port << target << "\n";
+    std::cout << "Connecting to Binance WebSocket at " << host << ":" << port << target << std::endl;
 
     reset_stream(ssl_ctx);
 
@@ -74,7 +74,7 @@ void BinanceClient::on_resolve(boost::beast::error_code ec, boost::asio::ip::tcp
 void BinanceClient::on_connect(boost::beast::error_code ec, boost::asio::ip::tcp::resolver::results_type::endpoint_type) {
     if (ec) return fail(ec, "Client TCP Connect");
 
-    std::cout << "TCP Connection established, starting SSL Handshake..." << "\n";
+    std::cout << "TCP Connection established, starting SSL Handshake..." << std::endl;
     boost::beast::get_lowest_layer(*ws).expires_never();
 
     ws->next_layer().async_handshake(
@@ -88,7 +88,7 @@ void BinanceClient::on_connect(boost::beast::error_code ec, boost::asio::ip::tcp
 void BinanceClient::on_ssl_handshake(boost::beast::error_code ec) {
     if (ec) return fail(ec, "Client SSL Handshake");
 
-    std::cout << "SSL Handshake successful, starting WS Handshake..." << "\n";
+    std::cout << "SSL Handshake successful, starting WS Handshake..." << std::endl;
     ws->async_handshake(
         host,
         target,
@@ -101,12 +101,12 @@ void BinanceClient::on_ssl_handshake(boost::beast::error_code ec) {
 void BinanceClient::on_ws_handshake(boost::beast::error_code ec) {
     if (ec) return fail(ec, "Client WS Handshake");
 
-    std::cout << "Client successfully connected to WebSocket" << "\n";
+    std::cout << "Client successfully connected to WebSocket" << std::endl;
     run_client();
 }
 
 void BinanceClient::run_client() {
-    std::cout << "Begin operating Binance Client..." << "\n";
+    std::cout << "Begin operating Binance Client..." << std::endl;
     read();
 }
 
@@ -157,7 +157,7 @@ void BinanceClient::on_read(boost::beast::error_code ec, std::size_t bytes_trans
 
 void BinanceClient::on_close(boost::beast::error_code ec) {
     if (ec) return fail(ec, "close");
-    std::cout << "Client connection closed gracefully" << "\n";
+    std::cout << "Client connection closed gracefully" << std::endl;
 }
 
 std::vector<PriceLevel> BinanceClient::parsePriceLevels(const nlohmann::json& json_array) {
@@ -170,11 +170,11 @@ std::vector<PriceLevel> BinanceClient::parsePriceLevels(const nlohmann::json& js
                 double quantity = std::stod(level_json.at(1).get<std::string>());
                 levels_vec.emplace_back(price, quantity);
             } catch (const std::exception& e) {
-                std::cerr << "Error parsing " << e.what() << "\n";
+                std::cerr << "Error parsing " << e.what() << std::endl;
                 throw std::runtime_error("Failed to parse price level: " + std::string(e.what()));
             }
         } else {
-            std::cerr << "Invalid price level format: " << level_json.dump() << "\n";
+            std::cerr << "Invalid price level format: " << level_json.dump() << std::endl;
             throw std::runtime_error("Invalid price level format in JSON data");
         }
     }
@@ -195,10 +195,10 @@ OrderBookTick BinanceClient::to_struct(const nlohmann::json& json_data, const st
         return OrderBookTick(updateId, symbol,json_string, std::move(bids_vec), std::move(asks_vec), localTimestampNs);
 
     } catch (const nlohmann::json::exception& e) {
-        std::cerr << "JSON parsing error in BinanceClient::to_struct: " << e.what() << "\n";
+        std::cerr << "JSON parsing error in BinanceClient::to_struct: " << e.what() << std::endl;
         throw std::runtime_error("Failed to parse Binance order book JSON data: " + std::string(e.what()));
     } catch (const std::exception& e) {
-        std::cerr << "Standard exception in BinanceClient::to_struct: " << e.what() << "\n";
+        std::cerr << "Standard exception in BinanceClient::to_struct: " << e.what() << std::endl;
         throw; 
     }
 }
