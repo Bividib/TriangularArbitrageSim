@@ -138,6 +138,38 @@ def calculate_profitable_opportunities_by_vip(df: pl.LazyFrame, return_col_name:
     
     return summary_table
 
+
+def get_bottleneck_leg_distribution(df : pl.DataFrame) -> pl.DataFrame:
+    """
+    Calculates the percentage distribution of values in the 'bottleneckLeg' column.
+
+    It assumes the input DataFrame contains a column named 'bottleneckLeg' with
+    exactly three distinct values representing the different legs of a trade.
+
+    Args:
+        df: A Polars DataFrame containing the trading data.
+
+    Returns:
+        A new Polars DataFrame with columns 'bottleneckLeg' and 'percentage',
+        showing the distribution of each leg, sorted by leg name.
+    """
+
+    # Get the total number of opportunities to use as the denominator
+    total_count = df.height
+
+    # Use value_counts() to get the frequency of each leg
+    leg_counts = df.get_column("bottleneckLeg").value_counts()
+
+    # Calculate the percentage distribution and rename the columns for clarity
+    distribution_df = leg_counts.with_columns(
+        ((pl.col("count") / total_count) * 100).alias("percentage")
+    ).select(
+        pl.col("bottleneckLeg"),
+        pl.col("percentage")
+    ).sort("bottleneckLeg")
+    
+    return distribution_df
+
 def _is_vip_trade_profitable(return_percentage, vip_level):
     fee = BINANCE_VIP_LEVELS[vip_level]
     fee_multiplier = (1 - fee) ** 3
@@ -149,3 +181,5 @@ def _adjust_rate_for_vip(traded_notional, unrealised_pnl, vip_level):
     fee_multiplier = (1 - fee) ** 3
 
     return (((traded_notional + unrealised_pnl) * fee_multiplier - traded_notional) / traded_notional) * 100
+
+

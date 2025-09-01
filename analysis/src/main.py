@@ -99,7 +99,9 @@ def print_average_return_and_notional(df: pl.DataFrame):
 
 
 def analyse_taker_fees_on_arbitrages(df: pl.DataFrame):
-    print(df)
+    pass
+
+    # TODO : Create function in visualise_data.py and write result to png file
 
 
 def analyse_user_group_profitability(lazy_df: pl.LazyFrame, group1, group2):
@@ -109,7 +111,12 @@ def analyse_user_group_profitability(lazy_df: pl.LazyFrame, group1, group2):
 
     lazy_summarised_grouped_data_with_group2_df = summarise_arbitrages_by_group(lazy_grouped_arbitrage_opportunities_df, vip_level=group2)
 
-    print(lazy_summarised_grouped_data_with_group1_df.collect())
+    # TODO : Create function in visualise_data.py and write result to png file
+
+
+def analyse_bottleneck_leg_distribution(df : pl.DataFrame):
+    distribution_df = get_bottleneck_leg_distribution(df)
+    create_simple_table(distribution_df, "Bottleneck Leg Distribution", RESOURCES_DIR / f"{FILE_NAME}_bottleneck_leg_distribution.png")
 
 if __name__ == "__main__":
     # convert_file(JSON_FILE_PATH, PARQUET_FILE_PATH)
@@ -123,25 +130,25 @@ if __name__ == "__main__":
 
     # analyse_nth_arbitrage_opportunity(lazy_df, 0)
 
-    # all_data_df = lazy_df.collect()
+    all_data_df = lazy_df.collect()
     # analyse_exchange_rate_product_over_time_period(all_data_df)
+    analyse_bottleneck_leg_distribution(all_data_df)
 
-    lazy_grouped_arbitrage_opportunities_df = get_grouped_opportunity_path_df(lazy_df)
-    # print_distinct_num_arbitrage_opportunities(lazy_grouped_arbitrage_opportunities_df)
+    # lazy_grouped_arbitrage_opportunities_df = get_grouped_opportunity_path_df(lazy_df)
+    # # print_distinct_num_arbitrage_opportunities(lazy_grouped_arbitrage_opportunities_df)
 
-    lazy_summarised_grouped_data_no_vip_df = summarise_arbitrages_by_group(lazy_grouped_arbitrage_opportunities_df, vip_level="None")
-    profitable_vip_level_summary_df = calculate_profitable_opportunities_by_vip(lazy_summarised_grouped_data_no_vip_df, "MaxReturn",BINANCE_VIP_LEVELS)
+    # lazy_summarised_grouped_data_no_vip_df = summarise_arbitrages_by_group(lazy_grouped_arbitrage_opportunities_df, vip_level="None")
+    # profitable_vip_level_summary_df = calculate_profitable_opportunities_by_vip(lazy_summarised_grouped_data_no_vip_df, "MaxReturn",BINANCE_VIP_LEVELS)
 
-    analyse_taker_fees_on_arbitrages(profitable_vip_level_summary_df)
+    # analyse_taker_fees_on_arbitrages(profitable_vip_level_summary_df)
 
-    summarised_grouped_data_df = lazy_summarised_grouped_data_no_vip_df.collect()
-    analyse_return_percentage_frequency_table(summarised_grouped_data_df)
-    analyse_duration_frequency_table(summarised_grouped_data_df)
-    analyse_traded_notional_frequency_table(summarised_grouped_data_df)
-    # print_average_return_and_notional(summarised_grouped_data_df)
-    print(summarised_grouped_data_df)
+    # summarised_grouped_data_df = lazy_summarised_grouped_data_no_vip_df.collect()
+    # analyse_return_percentage_frequency_table(summarised_grouped_data_df)
+    # analyse_duration_frequency_table(summarised_grouped_data_df)
+    # analyse_traded_notional_frequency_table(summarised_grouped_data_df)
+    # # print_average_return_and_notional(summarised_grouped_data_df)
+    # print(summarised_grouped_data_df)
 
 
-    # Compare between VIP 9 and Regular User
-    print("regular viper stats")
-    analyse_user_group_profitability(lazy_grouped_arbitrage_opportunities_df, "VIP_9", "Regular")
+    # # Compare between VIP 9 and Regular User
+    # analyse_user_group_profitability(lazy_grouped_arbitrage_opportunities_df, "VIP_9", "Regular")

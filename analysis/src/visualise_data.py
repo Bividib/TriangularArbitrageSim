@@ -212,3 +212,50 @@ def create_and_save_frequency_table(
     plt.savefig(save_path, bbox_inches='tight', pad_inches=0.1)
     print(f"Table for '{column_name}' saved to {save_path}")
     plt.close(fig) # Close the figure to free up memory
+
+
+def create_simple_table(df: pl.DataFrame, title: str, save_path: str):
+    """
+    Creates a clean visual table from a Polars DataFrame and saves it as an image.
+
+    Args:
+        df (pl.DataFrame): The DataFrame to visualize.
+        title (str): The title to display above the table.
+        save_path (str): The file path (e.g., 'path/to/table.png') to save the image.
+    """
+    # 1. Add a row count column, starting from 1
+    df_with_count = df.with_row_count(name="#", offset=1)
+    
+    # Reorder to make the row count the first column
+    df_with_count = df_with_count.select(pl.col("#"), pl.all().exclude("#"))
+
+    # Prepare data for matplotlib
+    column_headers = df_with_count.columns
+    cell_text = df_with_count.rows()
+
+    # Create figure and axis
+    fig, ax = plt.subplots(figsize=(8, 2))  # Adjust figsize as needed
+    ax.axis('tight')
+    ax.axis('off')
+
+    # Create the table
+    table = ax.table(
+        cellText=cell_text,
+        colLabels=column_headers,
+        cellLoc='center',
+        loc='center'
+    )
+    table.auto_set_font_size(False)
+    table.set_fontsize(10)
+    table.scale(1.2, 1.2) # Adjust scale to fit content
+
+    # Set title
+    plt.title(title, fontsize=14, pad=20)
+    
+    fig.tight_layout()
+
+    # Save the figure
+    Path(save_path).parent.mkdir(parents=True, exist_ok=True)
+    plt.savefig(save_path, dpi=300, bbox_inches='tight')
+    plt.close()
+    print(f"Table saved to {save_path}")
