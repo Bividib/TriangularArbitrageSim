@@ -104,7 +104,7 @@ def analyse_taker_fees_on_arbitrages(df: pl.DataFrame):
     # TODO : Create function in visualise_data.py and write result to png file
 
 
-def analyse_user_group_profitability(lazy_df: pl.LazyFrame, group1, group2):
+def analyse_user_group_profitability(lazy_grouped_arbitrage_opportunities_df: pl.LazyFrame, group1, group2):
 
     # Compare between VIP 9 and Regular User
     lazy_summarised_grouped_data_with_group1_df = summarise_arbitrages_by_group(lazy_grouped_arbitrage_opportunities_df, vip_level=group1)
