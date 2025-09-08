@@ -49,10 +49,6 @@ def print_num_arbitrage_opportunities(lazy_df: pl.LazyFrame):
     num_arbitrage_opportunities = get_number_of_arbitrage_opportunities(lazy_df)
     print(f"Number of arbitrage opportunities: {num_arbitrage_opportunities}")
 
-def print_distinct_num_arbitrage_opportunities(df : pl.LazyFrame):
-    num_distinct_opportunities = df.collect().select("group_id").max().item()
-    print(f"Number of distinct arbitrage opportunities: {num_distinct_opportunities}")
-
 def analyse_nth_arbitrage_opportunity(lazy_df: pl.LazyFrame, n: int):
     nth_path_lazy_df = get_nth_opportunity_path_df(lazy_df, n)
     nth_path_df = nth_path_lazy_df.collect()
@@ -91,12 +87,8 @@ def analyse_traded_notional_frequency_table(df: pl.DataFrame):
         save_path=Path(RESOURCES_DIR / f"{FILE_NAME}_traded_notional_distribution.png")
     )
 
-def print_average_return_and_notional(df: pl.DataFrame):
-    average_return = df.select(pl.mean("AverageReturn")).item()
-    average_notional = df.select(pl.mean("AverageTradedNotional")).item()
-    print(f"Average Return: {average_return:.5f}%")
-    print(f"Average Traded Notional: {average_notional:.5f}")
-
+def analyse_all_distinct_arbitrages_summary(df: pl.DataFrame):
+    create_simple_table(df, "Summary Statistics of All Distinct Arbitrage Opportunities", RESOURCES_DIR / f"{FILE_NAME}_all_distinct_arbitrages_summary.png")
 
 def analyse_taker_fees_on_arbitrages(df: pl.DataFrame):
     pass
@@ -132,22 +124,24 @@ if __name__ == "__main__":
 
     all_data_df = lazy_df.collect()
     # analyse_exchange_rate_product_over_time_period(all_data_df)
-    analyse_bottleneck_leg_distribution(all_data_df)
+    # analyse_bottleneck_leg_distribution(all_data_df)
 
-    # lazy_grouped_arbitrage_opportunities_df = get_grouped_opportunity_path_df(lazy_df)
-    # # print_distinct_num_arbitrage_opportunities(lazy_grouped_arbitrage_opportunities_df)
+    lazy_grouped_arbitrage_opportunities_df = get_grouped_opportunity_path_df(lazy_df)
 
-    # lazy_summarised_grouped_data_no_vip_df = summarise_arbitrages_by_group(lazy_grouped_arbitrage_opportunities_df, vip_level="None")
+    lazy_summarised_grouped_data_no_vip_df = summarise_arbitrages_by_group(lazy_grouped_arbitrage_opportunities_df, vip_level="None")
     # profitable_vip_level_summary_df = calculate_profitable_opportunities_by_vip(lazy_summarised_grouped_data_no_vip_df, "MaxReturn",BINANCE_VIP_LEVELS)
 
     # analyse_taker_fees_on_arbitrages(profitable_vip_level_summary_df)
 
     # summarised_grouped_data_df = lazy_summarised_grouped_data_no_vip_df.collect()
+    # print(summarised_grouped_data_df)
+
     # analyse_return_percentage_frequency_table(summarised_grouped_data_df)
     # analyse_duration_frequency_table(summarised_grouped_data_df)
     # analyse_traded_notional_frequency_table(summarised_grouped_data_df)
-    # # print_average_return_and_notional(summarised_grouped_data_df)
-    # print(summarised_grouped_data_df)
+
+    lazy_summarised_all_arbitrages_df = summarise_all_arbitrages(lazy_summarised_grouped_data_no_vip_df)
+    summarised_all_arbitrages_df = lazy_summarised_all_arbitrages_df.collect()
 
 
     # # Compare between VIP 9 and Regular User

@@ -58,13 +58,7 @@ def get_grouped_opportunity_path_df(lazy_df: pl.LazyFrame) -> pl.LazyFrame:
         .cast(pl.Int8).cum_sum().alias("group_id")
     )
 
-    # 2. Cast the columns to Float64 to prevent InvalidOperationError
-    df_with_correct_types = lazy_df.with_columns(
-        pl.col("unrealisedPnl").cast(pl.Float64),
-        pl.col("tradedNotional").cast(pl.Float64)
-    )
-
-    # 3. Filter to keep only rows where isArbitrageOpportunity is TRUE
+    # 2. Filter to keep only rows where isArbitrageOpportunity is TRUE
     grouped_opportunities_df = df_with_groups.filter(pl.col("isArbitrageOpportunity"))
 
     return grouped_opportunities_df
@@ -104,6 +98,21 @@ def summarise_arbitrages_by_group(grouped_df: pl.LazyFrame, vip_level: str) -> p
 
         # 5. Duration of the opportunity
         (pl.max("tickReceiveTime") - pl.min("tickReceiveTime")).alias("Duration")
+    )
+
+def summarise_all_arbitrages(df: pl.LazyFrame) -> pl.LazyFrame:
+    """
+    Summarizes statistics across all distinct arbitrage opportunities. 
+    
+    Args:
+        df (pl.LazyFrame): The DataFrame containing grouped data, resulting from summarise_arbitrages_by_group.
+    """
+
+    return df.agg(
+        pl.count().alias("NumDistinctOpportunities"),
+        pl.mean("MaxReturn").alias("AverageMaxReturn"),
+        pl.mean("Duration").alias("AverageDuration"),
+        pl.mean("MaxTradedNotional").alias("AverageMaxTradedNotional"),
     )
 
 def calculate_profitable_opportunities_by_vip(df: pl.LazyFrame, return_col_name: str, vip_levels: dict) -> pl.DataFrame:
