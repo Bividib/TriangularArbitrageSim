@@ -121,6 +121,9 @@ def analyse_user_group_profitability(lazy_grouped_arbitrage_opportunities_df: pl
 
     # 2. Define the bins for the frequency table
     return_bins = [0.0, 0.01, 0.025, 0.05, 0.075, 0.1, 0.15, 0.2]
+
+    return_columns = ["FirstReturn", "MaxReturn", "ReturnForMaxTradedNotional", "AverageReturn"]
+    col_headers_display = ["First", "Max", "Highest\nvalue", "Average"]
     
     # 3. Call the plotting function with the full, un-filtered summary data
     create_profitability_comparison_table(
@@ -129,6 +132,8 @@ def analyse_user_group_profitability(lazy_grouped_arbitrage_opportunities_df: pl
         group1_name=group1,
         group2_name=group2,
         return_bins=return_bins,
+        return_columns=return_columns,
+        col_headers_display=col_headers_display,
         save_path=RESOURCES_DIR / f"{FILE_NAME}_profitability_comparison_{group1}_vs_{group2}.png"
     )
 

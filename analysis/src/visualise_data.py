@@ -291,10 +291,10 @@ def create_profitability_comparison_table(
     group1_name: str,
     group2_name: str,
     return_bins: list,
+    return_columns : List[str],
+    col_headers_display: List[str],
     save_path: Path
 ):
-    return_columns = ["FirstReturn", "MaxReturn", "ReturnForMaxTradedNotional", "AverageReturn"]
-    col_headers_display = ["First", "Max", "Highest\nvalue", "Average"]
 
     labels = [f"< {return_bins[0]:.3f}"] # Label for values below the first bin
     labels += [f"{return_bins[i]:.3f}-{return_bins[i+1]:.3f}" for i in range(len(return_bins) - 1)]
