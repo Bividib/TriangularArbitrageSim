@@ -10,58 +10,64 @@ def get_number_of_arbitrage_opportunities(df: pl.LazyFrame) -> int:
     # Implement your logic to count arbitrage opportunities
     return df.filter(pl.col("isArbitrageOpportunity") == True).select(pl.len()).collect().item()
 
-def get_nth_opportunity_path_df(lazy_df: pl.LazyFrame, n: int) -> pl.LazyFrame:
+def get_nth_opportunity_path_df(
+    lazy_df: pl.LazyFrame,
+    n: int,
+    duration_s: float = 0.0,
+    comparison: str = 'gt',
+    min_rows: int = 1
+) -> pl.LazyFrame:
     """
-    Finds the nth group of consecutive arbitrage opportunities,
-    returning all data points in that sequence.
+    Finds the nth group of consecutive arbitrage opportunities, returning all data points in that sequence.
+    Can filter by duration and minimum number of ticks.
     """
-    # 1. Identify consecutive groups of TRUE values.
-    df_with_groups = lazy_df.with_columns(
-        (pl.col("isArbitrageOpportunity") & ~pl.col("isArbitrageOpportunity").shift(1).fill_null(False))
-        .cast(pl.Int8).cum_sum().alias("group_id")
+    opportunity_groups_df = get_grouped_opportunity_path_df(lazy_df)
+    duration_ns = int(duration_s * 1_000_000_000)
+
+    # Define the filter conditions
+    duration_filter = (
+        pl.col("Duration") >= duration_ns
+        if comparison == 'gt' else
+        pl.col("Duration") <= duration_ns
+    )
+    # The duration filter is only applied if duration_s > 0
+    if duration_s <= 0:
+        duration_filter = pl.lit(True) # Always true, effectively disabling the filter
+
+    # Find all group_ids that meet the criteria
+    eligible_opportunities_info_df = (
+        opportunity_groups_df
+        .group_by("group_id")
+        .agg(
+            (pl.max("tickReceiveTime") - pl.min("tickReceiveTime")).alias("Duration"),
+            pl.len().alias("RowCount")
+        )
+        .filter(duration_filter & (pl.col("RowCount") >= min_rows))
+        .select(pl.col("group_id").sort())
+        .collect()
     )
 
-    # 2. Collect information about each opportunity group.
-    # We filter for only the arbitrage opportunities to find the groups.
-    nth_opportunity_info_df = df_with_groups.filter(pl.col("isArbitrageOpportunity")).select(
-        pl.col("group_id").unique().sort().alias("group_id")
-    ).collect()
-
-    if nth_opportunity_info_df.is_empty():
-        print("No arbitrage opportunities found.")
-        return pl.LazyFrame({})
-    
-    # Check if the requested opportunity 'n' exists
-    if n >= nth_opportunity_info_df.height:
-        print(f"Opportunity {n} not found. Only {nth_opportunity_info_df.height} opportunities exist.")
+    if eligible_opportunities_info_df.is_empty():
+        print(f"No arbitrage opportunities found with at least {min_rows} rows.")
         return pl.LazyFrame({})
 
-    # 3. Extract group_id for the requested nth group.
-    nth_group_id = nth_opportunity_info_df.item(n, "group_id")
+    if n >= eligible_opportunities_info_df.height:
+        print(f"Error: Requested opportunity {n}, but only {eligible_opportunities_info_df.height} matching opportunities exist.")
+        return pl.LazyFrame({})
 
-    # 4. Filter the original data for the correct group.
-    # Ensure we take only 
-    nth_group_df = df_with_groups.filter(
-        (pl.col("group_id") == nth_group_id) & (pl.col("isArbitrageOpportunity") == True)
-    )
-
-    return nth_group_df
+    nth_group_id = eligible_opportunities_info_df.item(n, "group_id")
+    return opportunity_groups_df.filter(pl.col("group_id") == nth_group_id)
 
 def get_grouped_opportunity_path_df(lazy_df: pl.LazyFrame) -> pl.LazyFrame:
     """
     Groups the DataFrame by consecutive arbitrage opportunities,
     returning a LazyFrame with an additional 'group_id' column.
     """
-    # 1. Identify consecutive groups of TRUE values.
-    df_with_groups = lazy_df.with_columns(
+    return lazy_df.with_columns(
         (pl.col("isArbitrageOpportunity") & ~pl.col("isArbitrageOpportunity").shift(1).fill_null(False))
         .cast(pl.Int8).cum_sum().alias("group_id")
-    )
+    ).filter(pl.col("isArbitrageOpportunity"))
 
-    # 2. Filter to keep only rows where isArbitrageOpportunity is TRUE
-    grouped_opportunities_df = df_with_groups.filter(pl.col("isArbitrageOpportunity"))
-
-    return grouped_opportunities_df
 
 def summarise_arbitrages_by_group(grouped_df: pl.LazyFrame, vip_level: str) -> pl.LazyFrame:
     """

@@ -11,7 +11,8 @@ from visualise_data import *
 # Assumes this script is in the 'scripts' directory
 PROJECT_ROOT = Path(__file__).parent.parent
 RESOURCES_DIR = PROJECT_ROOT / 'resources'  # Pointing to the 'results' directory
-FILE_NAME = "example_trade_data"
+FILE_NAME = "BtcUsdtEthBtc-20250825-210237"
+# FILE_NAME = "example_trade_data"
 
 # Define the file paths
 JSON_FILE_PATH = RESOURCES_DIR / f'{FILE_NAME}.txt'
@@ -49,10 +50,23 @@ def print_num_arbitrage_opportunities(lazy_df: pl.LazyFrame):
     num_arbitrage_opportunities = get_number_of_arbitrage_opportunities(lazy_df)
     print(f"Number of arbitrage opportunities: {num_arbitrage_opportunities}")
 
-def analyse_nth_arbitrage_opportunity(lazy_df: pl.LazyFrame, n: int):
-    nth_path_lazy_df = get_nth_opportunity_path_df(lazy_df, n)
+def analyse_nth_arbitrage_opportunity(
+    lazy_df: pl.LazyFrame, 
+    n: int, 
+    duration_s: float = 0.0, 
+    comparison: str = 'gt',
+    min_rows: int = 1
+):
+    # Pass the new parameter to the data gathering function
+    nth_path_lazy_df = get_nth_opportunity_path_df(lazy_df, n, duration_s, comparison, min_rows)
     nth_path_df = nth_path_lazy_df.collect()
-    plot_single_opportunity_percentage_change(nth_path_df, RESOURCES_DIR / f"{FILE_NAME}_opportunity_{n}_return.png")
+    
+    # --- Dynamic Filename ---
+    # The comparison variable is now used directly in the filename
+    plot_single_opportunity_percentage_change(
+        nth_path_df, 
+        RESOURCES_DIR / f"{FILE_NAME}_opportunity_{n}{f'_{comparison}_{duration_s}s' if duration_s > 0 else ''}_{min_rows}_rows_return.png"
+    )
 
 def analyse_exchange_rate_product_over_time_period(df: pl.DataFrame):
     plot_exchange_rate_over_time(df, RESOURCES_DIR / f"{FILE_NAME}_exchange_rate_product_over_time.png")
@@ -119,16 +133,15 @@ if __name__ == "__main__":
 
     # print_num_data_points(lazy_df)
     # print_num_arbitrage_opportunities(lazy_df)
+    analyse_nth_arbitrage_opportunity(lazy_df, 0, 2,'lt',10)
 
-    # analyse_nth_arbitrage_opportunity(lazy_df, 0)
-
-    all_data_df = lazy_df.collect()
+    # all_data_df = lazy_df.collect()
     # analyse_exchange_rate_product_over_time_period(all_data_df)
     # analyse_bottleneck_leg_distribution(all_data_df)
 
-    lazy_grouped_arbitrage_opportunities_df = get_grouped_opportunity_path_df(lazy_df)
+    # lazy_grouped_arbitrage_opportunities_df = get_grouped_opportunity_path_df(lazy_df)
 
-    lazy_summarised_grouped_data_no_vip_df = summarise_arbitrages_by_group(lazy_grouped_arbitrage_opportunities_df, vip_level="None")
+    # lazy_summarised_grouped_data_no_vip_df = summarise_arbitrages_by_group(lazy_grouped_arbitrage_opportunities_df, vip_level="None")
     # profitable_vip_level_summary_df = calculate_profitable_opportunities_by_vip(lazy_summarised_grouped_data_no_vip_df, "MaxReturn",BINANCE_VIP_LEVELS)
 
     # analyse_taker_fees_on_arbitrages(profitable_vip_level_summary_df)
@@ -140,8 +153,8 @@ if __name__ == "__main__":
     # analyse_duration_frequency_table(summarised_grouped_data_df)
     # analyse_traded_notional_frequency_table(summarised_grouped_data_df)
 
-    lazy_summarised_all_arbitrages_df = summarise_all_arbitrages(lazy_summarised_grouped_data_no_vip_df)
-    summarised_all_arbitrages_df = lazy_summarised_all_arbitrages_df.collect()
+    # lazy_summarised_all_arbitrages_df = summarise_all_arbitrages(lazy_summarised_grouped_data_no_vip_df)
+    # summarised_all_arbitrages_df = lazy_summarised_all_arbitrages_df.collect()
 
 
     # # Compare between VIP 9 and Regular User
