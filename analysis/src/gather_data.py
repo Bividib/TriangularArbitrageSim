@@ -102,11 +102,11 @@ def summarise_arbitrages_by_group(grouped_df: pl.LazyFrame, vip_level: str) -> p
         (_adjust_rate_for_vip(pl.col("tradedNotional"),pl.col("unrealisedPnl"),vip_level)).mean().alias("AverageReturn"),
         (pl.mean("tradedNotional")).alias("AverageTradedNotional"),
 
-        # 5. Duration of the opportunity
-        (pl.max("tickReceiveTime") - pl.min("tickReceiveTime")).alias("Duration")
+        # 5. Duration of the opportunity in seconds (from nanoseconds)
+        ((pl.max("tickReceiveTime") - pl.min("tickReceiveTime")) / 1_000_000_000).alias("Duration")
     )
 
-def summarise_all_arbitrages(df: pl.LazyFrame) -> pl.LazyFrame:
+def summarise_all_arbitrages(df: pl.LazyFrame) -> pl.DataFrame:
     """
     Summarizes statistics across all distinct arbitrage opportunities. 
     
@@ -114,12 +114,18 @@ def summarise_all_arbitrages(df: pl.LazyFrame) -> pl.LazyFrame:
         df (pl.LazyFrame): The DataFrame containing grouped data, resulting from summarise_arbitrages_by_group.
     """
 
-    return df.agg(
-        pl.count().alias("NumDistinctOpportunities"),
+    return df.select(
+        pl.len().alias("NumDistinctOpportunities"),
         pl.mean("MaxReturn").alias("AverageMaxReturn"),
-        pl.mean("Duration").alias("AverageDuration"),
         pl.mean("MaxTradedNotional").alias("AverageMaxTradedNotional"),
-    )
+        
+        (pl.mean("Duration")).alias("AverageDuration (s)"),
+        
+        pl.max("MaxReturn").alias("MaxReturn"),
+        pl.max("MaxTradedNotional").alias("MaxTradedNotional"),
+        
+        (pl.max("Duration")).alias("MaxDuration (s)")
+    ).collect()
 
 def calculate_profitable_opportunities_by_vip(df: pl.LazyFrame, return_col_name: str, vip_levels: dict) -> pl.DataFrame:
     """
@@ -135,7 +141,7 @@ def calculate_profitable_opportunities_by_vip(df: pl.LazyFrame, return_col_name:
     """
     results_data = []
 
-    for level, _ in vip_levels.items():
+    for level, fee in vip_levels.items():
 
         # Filter for opportunities where the return exceeds the transaction cost
         profitable_count = (
@@ -146,7 +152,7 @@ def calculate_profitable_opportunities_by_vip(df: pl.LazyFrame, return_col_name:
             .item() 
         )
         
-        results_data.append({"VIP Level": level, "ProfitableOpportunities": profitable_count})
+        results_data.append({"VIP Level": level, "Fee" : fee, "ProfitableOpportunities": profitable_count})
 
     # Create the final summary DataFrame
     summary_table = pl.DataFrame(results_data)
@@ -189,7 +195,7 @@ def _is_vip_trade_profitable(return_percentage, vip_level):
     fee = BINANCE_VIP_LEVELS[vip_level]
     fee_multiplier = (1 - fee) ** 3
 
-    return return_percentage / 100 > ((1 - fee_multiplier) / fee_multiplier)
+    return return_percentage / 100 >= ((1 - fee_multiplier) / fee_multiplier)
 
 def _adjust_rate_for_vip(traded_notional, unrealised_pnl, vip_level):
     fee = BINANCE_VIP_LEVELS[vip_level]

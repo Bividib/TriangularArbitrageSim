@@ -22,6 +22,7 @@ PARQUET_FILE_PATH = RESOURCES_DIR / f'{FILE_NAME}.parquet'
 # Stores values as fractions rather than percentage for ease of use & calculations
 # These are Taker fees 
 BINANCE_VIP_LEVELS = {
+    "None" : 0.0,
     "VIP_9": 0.00023,
     "VIP_8": 0.00025,
     "VIP_7": 0.00028,
@@ -32,7 +33,6 @@ BINANCE_VIP_LEVELS = {
     "VIP_2": 0.001,
     "VIP_1": 0.001,
     "Regular": 0.001,
-    "None" : 0.0,
 }
 
 def convert_file(input_path: Path, output_path: Path) -> int:
@@ -72,7 +72,7 @@ def analyse_exchange_rate_product_over_time_period(df: pl.DataFrame):
     plot_exchange_rate_over_time(df, RESOURCES_DIR / f"{FILE_NAME}_exchange_rate_product_over_time.png")
 
 def analyse_return_percentage_frequency_table(df: pl.DataFrame):
-    return_bins = [0.0, 0.025, 0.05, 0.075, 0.100, 0.200, 0.300, 0.400, 0.500]
+    return_bins = [0.01, 0.025, 0.05, 0.075, 0.1, 0.15, 0.2]
     create_and_save_frequency_table(
         df=df,
         column_name="MaxReturn",
@@ -82,7 +82,7 @@ def analyse_return_percentage_frequency_table(df: pl.DataFrame):
     )
 
 def analyse_duration_frequency_table(df: pl.DataFrame):
-    duration_bins = [0.0, 0.5, 1.0, 2.0, 3.0, 4.0, 5.0]
+    duration_bins = [0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 200.0]
     create_and_save_frequency_table(
         df=df,
         column_name="Duration",
@@ -92,7 +92,7 @@ def analyse_duration_frequency_table(df: pl.DataFrame):
     )
 
 def analyse_traded_notional_frequency_table(df: pl.DataFrame):
-    notional_bins = [i/1000 for i in range(1,1000)]
+    notional_bins = [0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 8.0]
     create_and_save_frequency_table(
         df=df,
         column_name="MaxTradedNotional",
@@ -104,20 +104,33 @@ def analyse_traded_notional_frequency_table(df: pl.DataFrame):
 def analyse_all_distinct_arbitrages_summary(df: pl.DataFrame):
     create_simple_table(df, "Summary Statistics of All Distinct Arbitrage Opportunities", RESOURCES_DIR / f"{FILE_NAME}_all_distinct_arbitrages_summary.png")
 
-def analyse_taker_fees_on_arbitrages(df: pl.DataFrame):
-    pass
+def analyse_taker_fees_on_arbitrages(df: pl.LazyFrame):
+    profitable_vip_level_summary_df = calculate_profitable_opportunities_by_vip(df, "MaxReturn",BINANCE_VIP_LEVELS)
+    create_simple_table(profitable_vip_level_summary_df, "Profitable Opportunities by VIP Level", RESOURCES_DIR / f"{FILE_NAME}_profitable_opportunities_by_vip_level.png")
 
-    # TODO : Create function in visualise_data.py and write result to png file
 
+def analyse_user_group_profitability(lazy_grouped_arbitrage_opportunities_df: pl.LazyFrame, group1: str, group2: str):
+    """
+    Gets summary data for two user groups and calls the plotting function.
+    """
+    print(f"\n--- Analysing User Group Profitability: {group1} vs {group2} ---")
+    
+    # 1. Get the summarized data for both groups (no pre-filtering)
+    df1 = summarise_arbitrages_by_group(lazy_grouped_arbitrage_opportunities_df, vip_level=group1).collect()
+    df2 = summarise_arbitrages_by_group(lazy_grouped_arbitrage_opportunities_df, vip_level=group2).collect()
 
-def analyse_user_group_profitability(lazy_grouped_arbitrage_opportunities_df: pl.LazyFrame, group1, group2):
-
-    # Compare between VIP 9 and Regular User
-    lazy_summarised_grouped_data_with_group1_df = summarise_arbitrages_by_group(lazy_grouped_arbitrage_opportunities_df, vip_level=group1)
-
-    lazy_summarised_grouped_data_with_group2_df = summarise_arbitrages_by_group(lazy_grouped_arbitrage_opportunities_df, vip_level=group2)
-
-    # TODO : Create function in visualise_data.py and write result to png file
+    # 2. Define the bins for the frequency table
+    return_bins = [0.0, 0.01, 0.025, 0.05, 0.075, 0.1, 0.15, 0.2]
+    
+    # 3. Call the plotting function with the full, un-filtered summary data
+    create_profitability_comparison_table(
+        df1=df1,
+        df2=df2,
+        group1_name=group1,
+        group2_name=group2,
+        return_bins=return_bins,
+        save_path=RESOURCES_DIR / f"{FILE_NAME}_profitability_comparison_{group1}_vs_{group2}.png"
+    )
 
 
 def analyse_bottleneck_leg_distribution(df : pl.DataFrame):
@@ -133,18 +146,17 @@ if __name__ == "__main__":
 
     # print_num_data_points(lazy_df)
     # print_num_arbitrage_opportunities(lazy_df)
-    analyse_nth_arbitrage_opportunity(lazy_df, 0, 2,'lt',10)
+    # analyse_nth_arbitrage_opportunity(lazy_df, 0, 2,'lt',10)
 
     # all_data_df = lazy_df.collect()
     # analyse_exchange_rate_product_over_time_period(all_data_df)
     # analyse_bottleneck_leg_distribution(all_data_df)
 
-    # lazy_grouped_arbitrage_opportunities_df = get_grouped_opportunity_path_df(lazy_df)
+    lazy_grouped_arbitrage_opportunities_df = get_grouped_opportunity_path_df(lazy_df)
 
     # lazy_summarised_grouped_data_no_vip_df = summarise_arbitrages_by_group(lazy_grouped_arbitrage_opportunities_df, vip_level="None")
-    # profitable_vip_level_summary_df = calculate_profitable_opportunities_by_vip(lazy_summarised_grouped_data_no_vip_df, "MaxReturn",BINANCE_VIP_LEVELS)
 
-    # analyse_taker_fees_on_arbitrages(profitable_vip_level_summary_df)
+    # analyse_taker_fees_on_arbitrages(lazy_summarised_grouped_data_no_vip_df)
 
     # summarised_grouped_data_df = lazy_summarised_grouped_data_no_vip_df.collect()
     # print(summarised_grouped_data_df)
@@ -153,9 +165,8 @@ if __name__ == "__main__":
     # analyse_duration_frequency_table(summarised_grouped_data_df)
     # analyse_traded_notional_frequency_table(summarised_grouped_data_df)
 
-    # lazy_summarised_all_arbitrages_df = summarise_all_arbitrages(lazy_summarised_grouped_data_no_vip_df)
-    # summarised_all_arbitrages_df = lazy_summarised_all_arbitrages_df.collect()
+    # summarised_all_arbitrages_df = summarise_all_arbitrages(lazy_summarised_grouped_data_no_vip_df)
+    # analyse_all_distinct_arbitrages_summary(summarised_all_arbitrages_df)
 
-
-    # # Compare between VIP 9 and Regular User
-    # analyse_user_group_profitability(lazy_grouped_arbitrage_opportunities_df, "VIP_9", "Regular")
+    # # Compare between VIP 9 and VIP 5
+    analyse_user_group_profitability(lazy_grouped_arbitrage_opportunities_df, "VIP_9", "VIP_5")

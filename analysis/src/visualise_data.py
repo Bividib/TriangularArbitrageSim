@@ -214,27 +214,31 @@ def create_and_save_frequency_table(
     plt.close(fig) # Close the figure to free up memory
 
 
+
 def create_simple_table(df: pl.DataFrame, title: str, save_path: str):
     """
     Creates a clean visual table from a Polars DataFrame and saves it as an image.
-
-    Args:
-        df (pl.DataFrame): The DataFrame to visualize.
-        title (str): The title to display above the table.
-        save_path (str): The file path (e.g., 'path/to/table.png') to save the image.
     """
-    # 1. Add a row count column, starting from 1
-    df_with_count = df.with_row_count(name="#", offset=1)
-    
-    # Reorder to make the row count the first column
+    # 1. Round all floating point numbers for cleaner display
+    df_clean = df.with_columns(
+        pl.col(pl.Float64).round(6)
+    )
+
+    # Add a row count column, starting from 1
+    df_with_count = df_clean.with_row_index(name="#", offset=1)
     df_with_count = df_with_count.select(pl.col("#"), pl.all().exclude("#"))
 
     # Prepare data for matplotlib
     column_headers = df_with_count.columns
     cell_text = df_with_count.rows()
 
-    # Create figure and axis
-    fig, ax = plt.subplots(figsize=(8, 2))  # Adjust figsize as needed
+    # 2. Make the figure size dynamic based on the data size
+    num_rows, num_cols = df_with_count.shape
+    # Adjust the multipliers as needed for your preference
+    fig_width = num_cols * 2.2 
+    fig_height = (num_rows + 1) * 0.4
+    fig, ax = plt.subplots(figsize=(fig_width, fig_height))
+    
     ax.axis('tight')
     ax.axis('off')
 
@@ -245,17 +249,106 @@ def create_simple_table(df: pl.DataFrame, title: str, save_path: str):
         cellLoc='center',
         loc='center'
     )
-    table.auto_set_font_size(False)
-    table.set_fontsize(10)
-    table.scale(1.2, 1.2) # Adjust scale to fit content
+    table.set_fontsize(12)
+    table.scale(1, 1.5) # Adjust height scaling
 
-    # Set title
-    plt.title(title, fontsize=14, pad=20)
+    # 3. Automatically adjust column widths
+    table.auto_set_column_width(col=list(range(num_cols)))
     
-    fig.tight_layout()
-
+    # Set title
+    plt.title(title, fontsize=16, pad=20)
+    
     # Save the figure
     Path(save_path).parent.mkdir(parents=True, exist_ok=True)
-    plt.savefig(save_path, dpi=300, bbox_inches='tight')
+    plt.savefig(save_path, dpi=300, bbox_inches='tight', pad_inches=0.2)
     plt.close()
     print(f"Table saved to {save_path}")
+
+
+def _bin_and_count(df: pl.DataFrame, column_name: str, bins: list, labels: list) -> pl.DataFrame:
+    """
+    Filters for profitable returns (>=0) for the given column, then bins
+    and counts the frequency in each bin.
+    """
+    return (
+        df.filter(pl.col(column_name).is_not_null())
+        .filter(pl.col(column_name) >= 0)
+        .with_columns(
+            pl.col(column_name).cut(bins, labels=labels, include_breaks=True).alias("binned_data")
+        )
+        .unnest("binned_data")
+        .group_by("category", "breakpoint")
+        .agg(pl.len().alias(column_name))
+        .sort("breakpoint")
+        .rename({"category": "bin"})
+        .select("bin", column_name)
+    )
+
+
+def create_profitability_comparison_table(
+    df1: pl.DataFrame,
+    df2: pl.DataFrame,
+    group1_name: str,
+    group2_name: str,
+    return_bins: list,
+    save_path: Path
+):
+    return_columns = ["FirstReturn", "MaxReturn", "ReturnForMaxTradedNotional", "AverageReturn"]
+    col_headers_display = ["First", "Max", "Highest\nvalue", "Average"]
+
+    labels = [f"< {return_bins[0]:.3f}"] # Label for values below the first bin
+    labels += [f"{return_bins[i]:.3f}-{return_bins[i+1]:.3f}" for i in range(len(return_bins) - 1)]
+    labels.append(f">{return_bins[-1]:.3f}") # Label for values above the last bin
+
+    final_df = pl.DataFrame({"bin": labels}).with_columns(pl.col("bin").cast(pl.Categorical))
+    
+    for col in return_columns:
+        binned_g1 = _bin_and_count(df1, col, return_bins, labels)
+        final_df = final_df.join(binned_g1, on="bin", how="left")
+    for col in return_columns:
+        binned_g2 = _bin_and_count(df2, col, return_bins, labels)
+        final_df = final_df.join(binned_g2, on="bin", how="left")
+    
+    final_df = final_df.slice(1, len(final_df) - 2)
+    
+    numeric_df = final_df.drop("bin").fill_null(0)
+    totals_row = numeric_df.sum()
+    cell_text_body = numeric_df.to_numpy()
+    cell_text_total = totals_row.to_numpy()
+    cell_text = np.vstack([cell_text_body, cell_text_total])
+    row_labels = final_df["bin"].to_list()
+    row_labels.append("Σ Total")
+
+    full_col_headers = col_headers_display * 2
+
+    # --- Plotting ---
+    fig, ax = plt.subplots(figsize=(10, 5.5))
+    ax.axis('off')
+    
+    table = ax.table(
+        cellText=cell_text,
+        rowLabels=row_labels,
+        colLabels=full_col_headers,
+        loc='center',
+        cellLoc='center'
+    )
+    table.auto_set_font_size(False)
+    table.set_fontsize(10)
+    table.scale(1, 1.8)
+    table.auto_set_column_width(col=list(range(len(full_col_headers))))
+
+    # --- Styling last row---
+    # The table object's row index starts at 1 for data rows because of the header.
+    # So, the last row is at index len(row_labels).
+    total_row_index = len(row_labels)
+    for i in range(len(full_col_headers)):
+        table[total_row_index, i].get_text().set_weight('bold')
+    table.get_celld()[(total_row_index, -1)].get_text().set_weight('bold')
+
+    ax.text(0.45, 1.001, group1_name, transform=ax.transAxes, ha='center', va='center', weight='bold', fontsize=12)
+    ax.text(0.55, 1.001, group2_name, transform=ax.transAxes, ha='center', va='center', weight='bold', fontsize=12)
+
+    
+    plt.savefig(save_path, dpi=300, bbox_inches='tight', pad_inches=0.1)
+    plt.close(fig)
+    print(f"User comparison table saved to {save_path}")
