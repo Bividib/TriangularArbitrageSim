@@ -49,3 +49,5 @@ double getEffectiveRate(const TradeLeg& leg, const OrderBookTick& tick, double c
 double calculateVwapBid(const std::vector<PriceLevel>& levels, double desired_quantity);
 
 double calculateVwapAsk(const std::vector<PriceLevel>& levels, double old_currency);
+
+double calculateBookSideValue(const std::vector<PriceLevel>& levels, bool requireInversion);
