@@ -11,8 +11,8 @@ from visualise_data import *
 # Assumes this script is in the 'scripts' directory
 PROJECT_ROOT = Path(__file__).parent.parent
 RESOURCES_DIR = PROJECT_ROOT / 'resources'  # Pointing to the 'results' directory
-FILE_NAME = "BtcUsdtEthBtc-20250825-210237"
-# FILE_NAME = "example_trade_data"
+# FILE_NAME = "BtcUsdtEthBtc-20250825-210237"
+FILE_NAME = "example_trade_data"
 
 # Define the file paths
 JSON_FILE_PATH = RESOURCES_DIR / f'{FILE_NAME}.txt'
@@ -42,13 +42,9 @@ def convert_file(input_path: Path, output_path: Path) -> int:
         print("Conversion failed.")
         exit(1)
 
-def print_num_data_points(lazy_df : pl.LazyFrame):
-    num_rows = get_number_of_data_points(lazy_df)
-    print(f"Number of data points: {num_rows}")
-
-def print_num_arbitrage_opportunities(lazy_df: pl.LazyFrame):
-    num_arbitrage_opportunities = get_number_of_arbitrage_opportunities(lazy_df)
-    print(f"Number of arbitrage opportunities: {num_arbitrage_opportunities}")
+def analyse_individual_data_points(lazy_df: pl.LazyFrame):
+    result_df = summarise_all_data_points(lazy_df)
+    create_simple_table(result_df, "Summary of All Data Points", RESOURCES_DIR / f"{FILE_NAME}_all_data_points_summary.png")
 
 def analyse_nth_arbitrage_opportunity(
     lazy_df: pl.LazyFrame, 
@@ -149,15 +145,14 @@ if __name__ == "__main__":
     lazy_df = pl.scan_parquet(PARQUET_FILE_PATH)
     # print(pl.read_parquet_schema(PARQUET_FILE_PATH))
 
-    # print_num_data_points(lazy_df)
-    # print_num_arbitrage_opportunities(lazy_df)
+    analyse_individual_data_points(lazy_df)
     # analyse_nth_arbitrage_opportunity(lazy_df, 0, 2,'lt',10)
 
     # all_data_df = lazy_df.collect()
     # analyse_exchange_rate_product_over_time_period(all_data_df)
     # analyse_bottleneck_leg_distribution(all_data_df)
 
-    lazy_grouped_arbitrage_opportunities_df = get_grouped_opportunity_path_df(lazy_df)
+    # lazy_grouped_arbitrage_opportunities_df = get_grouped_opportunity_path_df(lazy_df)
 
     # lazy_summarised_grouped_data_no_vip_df = summarise_arbitrages_by_group(lazy_grouped_arbitrage_opportunities_df, vip_level="None")
 
@@ -174,4 +169,4 @@ if __name__ == "__main__":
     # analyse_all_distinct_arbitrages_summary(summarised_all_arbitrages_df)
 
     # # Compare between VIP 9 and VIP 5
-    analyse_user_group_profitability(lazy_grouped_arbitrage_opportunities_df, "VIP_9", "VIP_5")
+    # analyse_user_group_profitability(lazy_grouped_arbitrage_opportunities_df, "VIP_9", "VIP_5")

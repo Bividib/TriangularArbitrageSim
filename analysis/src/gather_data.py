@@ -2,13 +2,13 @@ import polars as pl
 
 from main import BINANCE_VIP_LEVELS
 
-def get_number_of_data_points(df: pl.LazyFrame) -> int:
-    return df.select(pl.len()).collect().item()
-
-# count the number of arbitrage opportunities
-def get_number_of_arbitrage_opportunities(df: pl.LazyFrame) -> int:
-    # Implement your logic to count arbitrage opportunities
-    return df.filter(pl.col("isArbitrageOpportunity") == True).select(pl.len()).collect().item()
+def summarise_all_data_points(df: pl.LazyFrame) -> pl.DataFrame:
+    return df.select(
+        pl.len().alias("TotalDataPoints"),
+        pl.col("isArbitrageOpportunity").sum().alias("TotalArbitrageOpportunities"),
+        (pl.col("isArbitrageOpportunity").sum() / pl.len() * 100).alias("% Opportunities"),
+        ((pl.col("tickProcessTime") - pl.col("tickReceiveTime")) / 1_000_000_000).mean().alias("AverageProcessingDelay (s)"),
+    ).collect()
 
 def get_nth_opportunity_path_df(
     lazy_df: pl.LazyFrame,
