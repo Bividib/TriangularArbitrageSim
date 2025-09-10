@@ -44,6 +44,7 @@ def plot_single_opportunity_percentage_change(path_df: pl.DataFrame, save_path: 
     # This automatically selects at most N integer ticks to display.
     ax = plt.gca()
     ax.xaxis.set_major_locator(ticker.MaxNLocator(integer=True, nbins=10)) 
+    ax.ticklabel_format(style="plain", axis="y", useOffset=False)  # Disable scientific notation on y-axis
 
     # If the labels are still too close, you can rotate them
     # ax.tick_params(axis='x', rotation=45)
@@ -265,23 +266,32 @@ def create_simple_table(df: pl.DataFrame, title: str, save_path: str):
     print(f"Table saved to {save_path}")
 
 
-def _bin_and_count(df: pl.DataFrame, column_name: str, bins: list, labels: list) -> pl.DataFrame:
+def _filter_bin_and_count(
+    df: pl.DataFrame, 
+    bin_on_col: str, 
+    filter_on_col: str, 
+    bins: list, 
+    labels: list
+) -> pl.DataFrame:
     """
-    Filters for profitable returns (>=0) for the given column, then bins
-    and counts the frequency in each bin.
+    Filters a DataFrame based on a condition on `filter_on_col` (>=0),
+    then bins and counts the frequency of values in `bin_on_col`.
     """
     return (
-        df.filter(pl.col(column_name).is_not_null())
-        .filter(pl.col(column_name) >= 0)
+        df.filter(pl.col(filter_on_col).is_not_null())
+        .filter(pl.col(bin_on_col).is_not_null())
+        .filter(pl.col(filter_on_col) >= 0)  # Condition applied to filter_on_col
         .with_columns(
-            pl.col(column_name).cut(bins, labels=labels, include_breaks=True).alias("binned_data")
+            # Binning is performed on bin_on_col
+            pl.col(bin_on_col).cut(bins, labels=labels, include_breaks=True).alias("binned_data")
         )
         .unnest("binned_data")
         .group_by("category", "breakpoint")
-        .agg(pl.len().alias(column_name))
+        # The aggregated column is named after the binned column
+        .agg(pl.len().alias(bin_on_col))
         .sort("breakpoint")
         .rename({"category": "bin"})
-        .select("bin", column_name)
+        .select("bin", bin_on_col)
     )
 
 
@@ -290,23 +300,25 @@ def create_profitability_comparison_table(
     df2: pl.DataFrame,
     group1_name: str,
     group2_name: str,
-    return_bins: list,
-    return_columns : List[str],
+    bins: list,
+    column_map: dict[str, str],  # Changed from a list to a dictionary
     col_headers_display: List[str],
     save_path: Path
 ):
 
-    labels = [f"< {return_bins[0]:.3f}"] # Label for values below the first bin
-    labels += [f"{return_bins[i]:.3f}-{return_bins[i+1]:.3f}" for i in range(len(return_bins) - 1)]
-    labels.append(f">{return_bins[-1]:.3f}") # Label for values above the last bin
+    labels = [f"< {bins[0]:.3f}"]
+    labels += [f"{bins[i]:.3f}-{bins[i+1]:.3f}" for i in range(len(bins) - 1)]
+    labels.append(f">{bins[-1]:.3f}")
 
     final_df = pl.DataFrame({"bin": labels}).with_columns(pl.col("bin").cast(pl.Categorical))
     
-    for col in return_columns:
-        binned_g1 = _bin_and_count(df1, col, return_bins, labels)
+    # --- Data processing using the new helper and column_map ---
+    for bin_col, filter_col in column_map.items():
+        binned_g1 = _filter_bin_and_count(df1, bin_col, filter_col, bins, labels)
         final_df = final_df.join(binned_g1, on="bin", how="left")
-    for col in return_columns:
-        binned_g2 = _bin_and_count(df2, col, return_bins, labels)
+        
+    for bin_col, filter_col in column_map.items():
+        binned_g2 = _filter_bin_and_count(df2, bin_col, filter_col, bins, labels)
         final_df = final_df.join(binned_g2, on="bin", how="left")
     
     final_df = final_df.slice(1, len(final_df) - 2)
