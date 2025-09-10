@@ -78,6 +78,9 @@ build/
 
 vcpkg_installed/
 
+analysis/resources/*
+!analysis/resources/example_trade_data.*
+
 # End of https://www.toptal.com/developers/gitignore/api/c++,cmake,visualstudiocode
 
 # Created by https://www.toptal.com/developers/gitignore/api/python,jupyternotebooks
