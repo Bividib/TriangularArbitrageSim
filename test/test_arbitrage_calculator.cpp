@@ -231,7 +231,7 @@ TEST_F(TradeLegTest, GetEffectiveRateNegativeTradeSize) {
 }
 
 TEST_F(StartingNotionalTest, CalculateStartingNotional) {
-    StartingNotional expected = {3.9976446695521055, "ethusdt"};
+    StartingNotional expected = {3.9976446942762109, "ethusdt"};
     StartingNotional actual = calculateStartingNotional(path,pairToPriceMap);
     
     EXPECT_DOUBLE_EQ(actual.notional, expected.notional);

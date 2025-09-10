@@ -1,59 +1,43 @@
 #include "arbitrage_calculator.h"
 #include <limits>
 
-StartingNotional calculateStartingNotional(const ArbitragePath& path, const std::unordered_map<std::string, OrderBookTick>& pairToPriceMap) {
-  
-    auto calculateBookSideValue = 
-        [](const std::vector<PriceLevel>& levels, bool sumBaseQuantity) -> double {
-        double totalValue = 0.0;
-        if (sumBaseQuantity) { // Sum the base currency quantity
-            for (const auto& level : levels) {
-                totalValue += level.quantity;
-            }
-        } else { // Sum the quote currency value (price * quantity)
-            for (const auto& level : levels) {
-                totalValue += level.price * level.quantity;
-            }
+double calculateBookSideValue(const std::vector<PriceLevel>& levels, bool requireInversion){
+    double totalValue = 0.0;
+    if (requireInversion){ // Sum the quote currency value 
+        for (const auto& level : levels){
+            totalValue += level.price * level.quantity;
         }
-        return totalValue;
-    };
+    } else { // Sum the base currency quantity
+        for (const auto& level : levels){
+            totalValue += level.quantity;
+        }
+    }
+    return totalValue;
+}
+
+StartingNotional calculateStartingNotional(const ArbitragePath& path, const std::unordered_map<std::string, OrderBookTick>& pairToPriceMap) {
 
     // --- Leg 1: Calculate its value AND the data needed for Leg 2's conversion ---
     const auto& leg1 = path.getFirstLeg();
     const auto& tick1 = pairToPriceMap.at(leg1.symbol);
     const auto& levels1 = leg1.requiresInversion ? tick1.asks : tick1.bids;
-
-    // Calculate all required values from Leg 1 in a single pass to avoid redundancy.
-    double totalQuoteValueLeg1 = 0.0;
-    double totalBaseQuantityLeg1 = 0.0;
-    for (const auto& level : levels1) {
-        totalQuoteValueLeg1 += level.price * level.quantity;
-        totalBaseQuantityLeg1 += level.quantity;
-    }
-
-    // Determine the final value for Leg 1 based on its inversion flag.
-    const double firstLegValue = leg1.requiresInversion ? totalQuoteValueLeg1 : totalBaseQuantityLeg1;
+    const double firstLegValue = calculateBookSideValue(levels1, leg1.requiresInversion);
     const StartingNotional leg1StartingNotional = {firstLegValue, leg1.symbol};
 
     // --- Leg 2: Calculate its value and convert it using Leg 1's data ---
-    double secondLegValue = 0.0;
     const auto& leg2 = path.getSecondLeg();
     const auto& tick2 = pairToPriceMap.at(leg2.symbol);
     const auto& levels2 = leg2.requiresInversion ? tick2.asks : tick2.bids;
 
-    const double secondLegValueIntermediate = calculateBookSideValue(levels2, !leg2.requiresInversion);
-    const double effectivePriceLeg1 = totalQuoteValueLeg1 / totalBaseQuantityLeg1;
-
-    secondLegValue = leg1.requiresInversion ? secondLegValueIntermediate * effectivePriceLeg1 : secondLegValueIntermediate / effectivePriceLeg1;
-
+    const double secondLegIntermediaryValue = calculateBookSideValue(levels2, leg2.requiresInversion);
+    const double secondLegValue = leg1.requiresInversion ? secondLegIntermediaryValue * tick1.getBestAskPrice() : secondLegIntermediaryValue / tick1.getBestBidPrice();
     const StartingNotional leg2StartingNotional = {secondLegValue, leg2.symbol};
 
     // --- Leg 3: Opposite to Leg1's Calculation --- 
     const auto& leg3 = path.getThirdLeg();
     const auto& tick3 = pairToPriceMap.at(leg3.symbol);
     const auto& levels3 = leg3.requiresInversion ? tick3.asks : tick3.bids;
-    const double thirdLegValue = calculateBookSideValue(levels3, leg3.requiresInversion);
-
+    const double thirdLegValue = calculateBookSideValue(levels3, !leg3.requiresInversion);
     const StartingNotional leg3StartingNotional = {thirdLegValue, leg3.symbol};
 
     // std::cout << "leg1 starting notional is " << leg1StartingNotional.notional << "\n";
@@ -136,9 +120,7 @@ double calculateVwapBid(const std::vector<PriceLevel>& levels, double desired_qu
         remaining_quantity_to_fill -= fill_quantity;
     }
 
-    const double EPSILON = std::numeric_limits<double>::epsilon() * desired_quantity;
-
-    if ((desired_quantity - total_quantity_filled) > EPSILON || total_quantity_filled <= 0) {
+    if (total_quantity_filled < desired_quantity * 0.999999999) {
         // std::cerr << "Warning: Insufficient liquidity. Desired: " << desired_quantity 
         //         << ", Filled: " << total_quantity_filled << ". Cannot fulfill trade.\n";
         return 0.0;
