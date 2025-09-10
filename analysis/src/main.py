@@ -11,7 +11,6 @@ from visualise_data import *
 # Assumes this script is in the 'scripts' directory
 PROJECT_ROOT = Path(__file__).parent.parent
 RESOURCES_DIR = PROJECT_ROOT / 'resources'  # Pointing to the 'results' directory
-# FILE_NAME = "BtcUsdtEthBtc-20250825-210237"
 FILE_NAME = "example_trade_data"
 
 # Define the file paths
@@ -68,7 +67,7 @@ def analyse_exchange_rate_product_over_time_period(df: pl.DataFrame):
     plot_exchange_rate_over_time(df, RESOURCES_DIR / f"{FILE_NAME}_exchange_rate_product_over_time.png")
 
 def analyse_return_percentage_frequency_table(df: pl.DataFrame):
-    return_bins = [0.01, 0.025, 0.05, 0.075, 0.1, 0.15, 0.2]
+    return_bins = [0.01, 0.025, 0.05, 0.075, 0.1, 0.15]
     create_and_save_frequency_table(
         df=df,
         column_name="MaxReturn",
@@ -78,7 +77,7 @@ def analyse_return_percentage_frequency_table(df: pl.DataFrame):
     )
 
 def analyse_duration_frequency_table(df: pl.DataFrame):
-    duration_bins = [0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 200.0]
+    duration_bins = [0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 100, 200.0, 400]
     create_and_save_frequency_table(
         df=df,
         column_name="Duration",
@@ -88,7 +87,7 @@ def analyse_duration_frequency_table(df: pl.DataFrame):
     )
 
 def analyse_traded_notional_frequency_table(df: pl.DataFrame):
-    notional_bins = [0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 8.0]
+    notional_bins = [1000, 2000, 3000, 4000, 5000, 10000,40000,100000,250000]
     create_and_save_frequency_table(
         df=df,
         column_name="MaxTradedNotional",
@@ -116,9 +115,22 @@ def analyse_user_group_profitability(lazy_grouped_arbitrage_opportunities_df: pl
     df2 = summarise_arbitrages_by_group(lazy_grouped_arbitrage_opportunities_df, vip_level=group2).collect()
 
     # 2. Define the bins for the frequency table
-    return_bins = [0.0, 0.01, 0.025, 0.05, 0.075, 0.1, 0.15, 0.2]
+    return_bins = [0.0, 0.01, 0.025, 0.05, 0.075, 0.1, 0.15]
 
-    return_columns = ["FirstReturn", "MaxReturn", "ReturnForMaxTradedNotional", "AverageReturn"]
+    return_column_map = {
+        "FirstReturn": "FirstReturn",
+        "MaxReturn": "MaxReturn",
+        "ReturnForMaxTradedNotional": "ReturnForMaxTradedNotional",
+        "AverageReturn": "AverageReturn"
+    }
+
+    notional_column_map = {
+        "FirstTradedNotional": "FirstReturn",
+        "TradedNotionalForMaxReturn": "MaxReturn",
+        "MaxTradedNotional": "ReturnForMaxTradedNotional",
+        "AverageTradedNotional": "AverageReturn"
+    }
+
     col_headers_display = ["First", "Max", "Highest\nvalue", "Average"]
     
     # 3. Call the plotting function with the full, un-filtered summary data
@@ -127,10 +139,23 @@ def analyse_user_group_profitability(lazy_grouped_arbitrage_opportunities_df: pl
         df2=df2,
         group1_name=group1,
         group2_name=group2,
-        return_bins=return_bins,
-        return_columns=return_columns,
+        bins=return_bins,
+        column_map=return_column_map,
         col_headers_display=col_headers_display,
-        save_path=RESOURCES_DIR / f"{FILE_NAME}_profitability_comparison_{group1}_vs_{group2}.png"
+        save_path=RESOURCES_DIR / f"{FILE_NAME}_return_profitability_comparison_{group1}_vs_{group2}.png"
+    )
+
+    notional_bins = [0, 1000, 2000, 3000, 4000, 5000, 10000, 40000, 100000, 250000]
+
+    create_profitability_comparison_table(
+        df1=df1,
+        df2=df2,
+        group1_name=group1,
+        group2_name=group2,
+        bins=notional_bins,
+        column_map=notional_column_map,
+        col_headers_display=col_headers_display,
+        save_path=RESOURCES_DIR / f"{FILE_NAME}_notional_profitability_comparison_{group1}_vs_{group2}.png"
     )
 
 
@@ -142,10 +167,10 @@ if __name__ == "__main__":
     # convert_file(JSON_FILE_PATH, PARQUET_FILE_PATH)
 
     # # Correctly read a lazy frame
-    lazy_df = pl.scan_parquet(PARQUET_FILE_PATH)
+    # lazy_df = pl.scan_parquet(PARQUET_FILE_PATH)
     # print(pl.read_parquet_schema(PARQUET_FILE_PATH))
 
-    analyse_individual_data_points(lazy_df)
+    # analyse_individual_data_points(lazy_df)
     # analyse_nth_arbitrage_opportunity(lazy_df, 0, 2,'lt',10)
 
     # all_data_df = lazy_df.collect()
