@@ -121,8 +121,8 @@ double calculateVwapBid(const std::vector<PriceLevel>& levels, double desired_qu
     }
 
     if (total_quantity_filled < desired_quantity * 0.999999999) {
-        std::cerr << "Warning: Insufficient liquidity. Desired: " << desired_quantity 
-                << ", Filled: " << total_quantity_filled << ". Cannot fulfill trade.\n";
+        // std::cerr << "Warning: Insufficient liquidity. Desired: " << desired_quantity 
+        //         << ", Filled: " << total_quantity_filled << ". Cannot fulfill trade.\n";
         return 0.0;
     }
 
@@ -176,10 +176,10 @@ double calculateVwapAsk(const std::vector<PriceLevel>& levels, double old_curren
         return usdt_spent_actual / total_eth_acquired;
     } 
 
-    std::cerr << "Warning: Trade not fully executed due to insufficient liquidity. "
-        << "Desired : " << old_currency
-        << ", Actually spent: " << usdt_spent_actual
-        << ", Remaining : " << remaining_usdt_to_spend << "\n";
+    // std::cerr << "Warning: Trade not fully executed due to insufficient liquidity. "
+    //     << "Desired : " << old_currency
+    //     << ", Actually spent: " << usdt_spent_actual
+    //     << ", Remaining : " << remaining_usdt_to_spend << "\n";
 
     return 0.0;
 }
