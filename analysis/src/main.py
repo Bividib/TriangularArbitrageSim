@@ -167,7 +167,7 @@ if __name__ == "__main__":
     # convert_file(JSON_FILE_PATH, PARQUET_FILE_PATH)
 
     # # Correctly read a lazy frame
-    # lazy_df = pl.scan_parquet(PARQUET_FILE_PATH)
+    lazy_df = pl.scan_parquet(PARQUET_FILE_PATH)
     # print(pl.read_parquet_schema(PARQUET_FILE_PATH))
 
     # analyse_individual_data_points(lazy_df)
