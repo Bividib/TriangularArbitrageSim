@@ -7,7 +7,7 @@ def summarise_all_data_points(df: pl.LazyFrame) -> pl.DataFrame:
         pl.len().alias("TotalDataPoints"),
         pl.col("isArbitrageOpportunity").sum().alias("TotalArbitrageOpportunities"),
         (pl.col("isArbitrageOpportunity").sum() / pl.len() * 100).alias("% Opportunities"),
-        ((pl.col("tickProcessTime") - pl.col("tickReceiveTime")) / 1_000_000_000).mean().alias("AverageProcessingDelay (s)"),
+        (pl.col("tickProcessTime") - pl.col("tickReceiveTime")).mean().alias("AverageProcessingDelay (ns)"),
     ).collect()
 
 def get_nth_opportunity_path_df(
